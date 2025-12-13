@@ -1,0 +1,12 @@
+[
+  {
+    "id": "1765592205256",
+    "login": "poto7",
+    "firstName": "Дмитро",
+    "lastName": "Медвідь",
+    "email": "dima.medvid.06@gmail.com",
+    "passwordHash": "$2a$10$DzQXaufuMzJhM5k12GEjuOjNGw/YLzIK40VBUK4BcM3fOMPsYfPiC",
+    "role": "moderator",
+    "createdAt": "2025-12-13T02:16:45.256Z"
+  }
+]

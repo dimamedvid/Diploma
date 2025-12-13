@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "title": "Кобзар",
+    "author": "Тарас Шевченко",
+    "genre": "Поезія",
+    "rating": 4.9,
+    "description": "Збірка поезій великого українського поета",
+    "cover": "https://cdn-fmdgc.nitrocdn.com/DJHzsKSzEIUxuEwuLIiKesCWutiPRqpT/assets/images/optimized/rev-5689b22/uabook.com.ua/wp-content/uploads/2022/06/kobzar-povna-iljustrovana-zbirka.jpg"
+  },
+  {
+    "id": 2,
+    "title": "Лісова пісня",
+    "author": "Леся Українка",
+    "genre": "Драма",
+    "rating": 4.7,
+    "description": "Драматична поема про кохання та свободу",
+    "cover": "https://static.yakaboo.ua/media/cloudflare/product/webp/600x840/c/o/cover_858_1.jpg"
+  },
+  {
+    "id": 3,
+    "title": "Тіні забутих предків",
+    "author": "Михайло Коцюбинський",
+    "genre": "Повість",
+    "rating": 4.6,
+    "description": "Історія кохання в атмосфері гуцульських традицій",
+    "cover": "https://upload.wikimedia.org/wikipedia/uk/e/e3/Tini_predkiv.jpg"
+  },
+  {
+    "id": 4,
+    "title": "Захар Беркут",
+    "author": "Іван Франко",
+    "genre": "Історичний роман",
+    "rating": 4.5,
+    "description": "Про боротьбу громади за свободу та гідність",
+    "cover": "https://www.megakniga.com.ua/uploads/cache/Products/Product_images_455751/e5ffbf_w1600.jpg"
+  }
+]

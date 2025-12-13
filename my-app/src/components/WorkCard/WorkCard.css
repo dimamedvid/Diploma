@@ -1,0 +1,82 @@
+.work-card {
+  border: 1px solid #000;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #181818;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.work-card__cover-wrapper {
+  height: 426px;
+  background: #181818;
+}
+
+.work-card__cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.work-card__body {
+  padding: 20px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.work-card__title {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 2px;
+  color: #ccc;
+}
+
+.work-card__author {
+  font-size: 16px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.work-card__rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.work-card__stars {
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: #ccc;
+}
+
+.work-card__rating-value {
+  font-size: 14px;
+  color: #ccc;
+}
+
+.work-card__description {
+  font-size: 14px;
+  color: #ccc;
+  margin-bottom: 10px;
+  min-height: 36px;
+}
+
+.work-card__button {
+  margin-top: auto;
+  height: 50px;
+  border-radius: 8px;
+  border: none;
+  background: #5a5aff;
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 10px;
+}
+
+.work-card__button:hover {
+  opacity: 0.92;
+}

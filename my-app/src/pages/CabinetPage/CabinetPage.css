@@ -1,0 +1,27 @@
+.cabinet {
+  padding: 24px;
+  display: grid;
+  place-items: center;
+}
+
+.cabinet__card {
+  width: 100%;
+  max-width: 520px;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.cabinet__title {
+  margin: 0 0 16px;
+  font-size: 24px;
+}
+
+.cabinet__button {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0;
+  cursor: pointer;
+  background-color: #ca0707;
+  color: #fff;
+}
