@@ -16,18 +16,14 @@
 .header__logo {
   display: flex;
   align-items: center;
+  text-decoration: none;
+  color: #ccc;
 }
 
 .header__inner {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.header__logo {
-  text-decoration: none;
-  color: #ccc;
-  
 }
 
 .header__logo h1 {
@@ -42,7 +38,7 @@
 }
 
 .header__logo:hover {
-    color: #fff;
+  color: #fff;
 }
 
 .header__link {
@@ -72,7 +68,10 @@
 
 .header__button--outline {
   background: transparent;
-  border: 1px solid #5a5aff;
-  color: #5a5aff;
+  border: 1px solid #ffffff;
+  color: #ffffff;
 }
 
+.header__button--outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+}

@@ -3,7 +3,7 @@
   place-items: center;
   padding: 4rem;
 }
-  
+
 .auth__card {
   width: 100%;
   max-width: 420px;
@@ -75,5 +75,6 @@
 
 .auth__link {
   color: #9aa0ff;
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }

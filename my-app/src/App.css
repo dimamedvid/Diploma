@@ -9,3 +9,8 @@
   background-color: #212121;
   color: #fff;
 }
+
+.results__title,
+.results__count {
+  color: #f0f0f0;
+}

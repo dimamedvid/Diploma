@@ -17,16 +17,12 @@ export default function Header() {
   return (
     <header className="header">
       <div className="container header__inner">
-        <Link to="/" className="header__logo">
-          <img className="header__icon" src={icon} alt="icon" />
+        <Link to="/" className="header__logo" aria-label="Перейти на головну">
+          <img className="header__icon" src={icon} alt="Ukr-Book logo" />
           <h1 className="header__title">Ukr-Book</h1>
         </Link>
 
-        <nav className="header__nav">
-          {/* <Link className="header__link" to="/">
-
-          </Link> */}
-
+        <nav className="header__nav" aria-label="Головна навігація">
           {isModerator && (
             <Link className="header__link" to="/admin">
               Модерація
@@ -40,12 +36,15 @@ export default function Header() {
               <Link className="header__button" to="/cabinet">
                 Особистий кабінет
               </Link>
+              <button className="header__button header__button--outline" type="button" onClick={onLogout}>
+                Вийти
+              </button>
             </>
           ) : (
             <>
               <Link className="header__button" to="/login">
                 Увійти
-              </Link> 
+              </Link>
               <Link className="header__button header__button--outline" to="/register">
                 Реєстрація
               </Link>

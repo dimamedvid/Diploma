@@ -14,7 +14,7 @@ export default function App() {
   return (
     <div className="layout">
     <Header />
-    <div className="layout__content">
+    <main className="layout__content">
       <div className=" container">
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -36,7 +36,7 @@ export default function App() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
       </div>
-    </div>
+    </main>
     <Footer />
   </div>
   );
