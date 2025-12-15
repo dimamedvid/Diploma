@@ -1,0 +1,59 @@
+name: E2E Cucumber (Playwright)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    env:
+      UI_URL: http://localhost:3000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install server deps
+        working-directory: server
+        run: npm ci
+
+      - name: Install client deps
+        working-directory: my-app
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: my-app
+        run: npx playwright install --with-deps
+
+      - name: Start server
+        working-directory: server
+        run: nohup npm run dev > server.log 2>&1 &
+
+      - name: Start client
+        working-directory: my-app
+        run: nohup npm start > client.log 2>&1 &
+
+      - name: Wait for UI
+        run: npx wait-on ${{ env.UI_URL }}
+
+      - name: Run Cucumber E2E
+        working-directory: my-app
+        run: npx cucumber-js
+
+      - name: Upload reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: |
+            my-app/reports/**
+            server/server.log
+            my-app/client.log
