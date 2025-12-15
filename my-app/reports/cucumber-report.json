@@ -1,0 +1,195 @@
+[
+  {
+    "description": "  As a registered user\n  I want to log in to the system\n  So that I can access the main content of the application",
+    "elements": [
+      {
+        "description": "",
+        "id": "user-authentication;successful-login-with-valid-credentials",
+        "keyword": "Scenario",
+        "line": 9,
+        "name": "Successful login with valid credentials",
+        "steps": [
+          {
+            "keyword": "Before",
+            "hidden": true,
+            "result": {
+              "status": "passed",
+              "duration": 451366700
+            }
+          },
+          {
+            "arguments": [],
+            "keyword": "Given ",
+            "line": 7,
+            "name": "the user opens the application at \"http://localhost:3000\"",
+            "match": {
+              "location": "features\\steps\\ui.steps.js:5"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 480371499
+            }
+          },
+          {
+            "arguments": [],
+            "keyword": "When ",
+            "line": 10,
+            "name": "the user navigates to the login page",
+            "match": {
+              "location": "features\\steps\\ui.steps.js:13"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 53825699
+            }
+          },
+          {
+            "arguments": [],
+            "keyword": "And ",
+            "line": 11,
+            "name": "the user enters login \"poto7\" and password \"qqqq1111\"",
+            "match": {
+              "location": "features\\steps\\ui.steps.js:17"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 28646300
+            }
+          },
+          {
+            "arguments": [],
+            "keyword": "And ",
+            "line": 12,
+            "name": "the user submits the login form",
+            "match": {
+              "location": "features\\steps\\ui.steps.js:25"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 33535499
+            }
+          },
+          {
+            "arguments": [],
+            "keyword": "Then ",
+            "line": 13,
+            "name": "the user should be redirected to the home page",
+            "match": {
+              "location": "features\\steps\\ui.steps.js:29"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 53663099
+            }
+          },
+          {
+            "arguments": [],
+            "keyword": "And ",
+            "line": 14,
+            "name": "the user should see the text \"Результати пошуку\"",
+            "match": {
+              "location": "features\\steps\\ui.steps.js:33"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 9927699
+            }
+          },
+          {
+            "keyword": "After",
+            "hidden": true,
+            "result": {
+              "status": "passed",
+              "duration": 36636699
+            }
+          }
+        ],
+        "tags": [],
+        "type": "scenario"
+      }
+    ],
+    "id": "user-authentication",
+    "line": 1,
+    "keyword": "Feature",
+    "name": "User authentication",
+    "tags": [],
+    "uri": "features\\authentication.feature"
+  },
+  {
+    "description": "  As a user\n  I want to search literary works by title\n  So that I can quickly find the text I am interested in",
+    "elements": [
+      {
+        "description": "",
+        "id": "search-literary-texts;search-literary-works-by-title",
+        "keyword": "Scenario Outline",
+        "line": 9,
+        "name": "Search literary works by title",
+        "steps": [
+          {
+            "keyword": "Before",
+            "hidden": true,
+            "result": {
+              "status": "passed",
+              "duration": 467126800
+            }
+          },
+          {
+            "arguments": [],
+            "keyword": "Given ",
+            "line": 7,
+            "name": "the user is on the home page \"http://localhost:3000\"",
+            "match": {
+              "location": "features\\steps\\ui.steps.js:9"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 463797599
+            }
+          },
+          {
+            "arguments": [],
+            "keyword": "When ",
+            "line": 10,
+            "name": "the user enters \"Кобзар\" into the search field",
+            "match": {
+              "location": "features\\steps\\ui.steps.js:37"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 49441899
+            }
+          },
+          {
+            "arguments": [],
+            "keyword": "Then ",
+            "line": 11,
+            "name": "the number of found literary works should be updated",
+            "match": {
+              "location": "features\\steps\\ui.steps.js:41"
+            },
+            "result": {
+              "status": "passed",
+              "duration": 13742600
+            }
+          },
+          {
+            "keyword": "After",
+            "hidden": true,
+            "result": {
+              "status": "passed",
+              "duration": 39508899
+            }
+          }
+        ],
+        "tags": [],
+        "type": "scenario"
+      }
+    ],
+    "id": "search-literary-texts",
+    "line": 1,
+    "keyword": "Feature",
+    "name": "Search literary texts",
+    "tags": [],
+    "uri": "features\\search.feature"
+  }
+]
