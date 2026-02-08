@@ -67,13 +67,17 @@ Backend:
 
 ## 📁 Структура репозиторію
 
+## 📁 Структура репозиторію
+
+```text
 Diploma/
-├ my-app/ # клієнтська частина (React frontend)
-├ server/ # серверна частина (Node.js backend)
-├ .github/ # CI workflows
-├ .gitignore # глобальні правила ігнорування файлів
-├ README.md # опис проєкту
-└ LICENSE # ліцензія
+├ my-app/        # клієнтська частина (React frontend)
+├ server/        # серверна частина (Node.js backend)
+├ .github/       # CI workflows
+├ .gitignore     # глобальні правила ігнорування файлів
+├ README.md      # опис проєкту
+└ LICENSE        # ліцензія
+```
 
 ---
 
