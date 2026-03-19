@@ -19,7 +19,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint src features --ext .js,.jsx",
+    "lint:fix": "eslint src features --ext .js,.jsx --fix"
   },
   "eslintConfig": {
     "extends": [
@@ -41,6 +43,7 @@
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.4.0",
+    "eslint": "^8.57.1",
     "playwright": "^1.57.0",
     "typescript": "4.9.5"
   }
