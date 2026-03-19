@@ -56,12 +56,12 @@ router.post("/register", async (req, res) => {
   const users = readUsers();
 
   const loginExists = users.some(
-    (u) => String(u.login || "").trim().toLowerCase() === login.toLowerCase()
+    (u) => String(u.login || "").trim().toLowerCase() === login.toLowerCase(),
   );
-  if (loginExists) return res.status(409).json({ message: "Такий логін вже зайнятий." });
+  if (loginExists) {return res.status(409).json({ message: "Такий логін вже зайнятий." });}
 
   const emailExists = users.some((u) => normalizeEmail(u.email) === email);
-  if (emailExists) return res.status(409).json({ message: "Такий email вже зареєстрований." });
+  if (emailExists) {return res.status(409).json({ message: "Такий email вже зареєстрований." });}
 
   const passwordHash = await bcrypt.hash(password, 10);
 
@@ -110,7 +110,7 @@ router.post("/login", async (req, res) => {
   const users = readUsers();
 
   let user = users.find(
-    (u) => String(u.login || "").trim().toLowerCase() === loginInput.toLowerCase()
+    (u) => String(u.login || "").trim().toLowerCase() === loginInput.toLowerCase(),
   );
 
   if (!user) {
@@ -118,10 +118,10 @@ router.post("/login", async (req, res) => {
     user = users.find((u) => normalizeEmail(u.email) === asEmail);
   }
 
-  if (!user) return res.status(401).json({ message: "Невірний логін або пароль." });
+  if (!user) {return res.status(401).json({ message: "Невірний логін або пароль." });}
 
   const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return res.status(401).json({ message: "Невірний логін або пароль." });
+  if (!ok) {return res.status(401).json({ message: "Невірний логін або пароль." });}
 
   const token = signToken({
     id: user.id,

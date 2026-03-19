@@ -47,4 +47,12 @@ module.exports = {
     "*.config.js",
     "cucumber.js",
   ],
+  overrides: [
+    {
+      files: ["**/__tests__/**/*.js", "**/*.test.js", "**/*.test.jsx"],
+      env: {
+        jest: true,
+      },
+    },
+  ],
 };

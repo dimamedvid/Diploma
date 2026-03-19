@@ -82,10 +82,10 @@ export default function RegisterPage() {
         lastName: form.lastName,
         email: form.email,
         password: form.password,
-      })
+      }),
     );
 
-    if (res.type.endsWith("fulfilled")) navigate("/");
+    if (res.type.endsWith("fulfilled")) {navigate("/");}
   };
 
   return (

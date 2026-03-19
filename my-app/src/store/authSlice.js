@@ -33,7 +33,7 @@ export const registerUser = createAsyncThunk(
     } catch (e) {
       return rejectWithValue(e.message || "Register failed");
     }
-  }
+  },
 );
 
 export const loginUser = createAsyncThunk(
@@ -45,7 +45,7 @@ export const loginUser = createAsyncThunk(
     } catch (e) {
       return rejectWithValue(e.message || "Login failed");
     }
-  }
+  },
 );
 
 export const fetchMe = createAsyncThunk(
@@ -53,13 +53,13 @@ export const fetchMe = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     try {
       const token = getState().auth.token;
-      if (!token) return rejectWithValue("No token");
+      if (!token) {return rejectWithValue("No token");}
       const data = await authApi.me(token);
       return data.user;
     } catch (e) {
       return rejectWithValue(e.message || "Unauthorized");
     }
-  }
+  },
 );
 
 const authSlice = createSlice({

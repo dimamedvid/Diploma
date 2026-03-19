@@ -7,8 +7,8 @@ function Stars({ value }) {
   return (
     <span className="work-card__stars">
       {[1, 2, 3, 4, 5].map(i => {
-        if (i <= full) return "★ ";
-        if (i === full + 1 && half) return "⯨ ";
+        if (i <= full) {return "★ ";}
+        if (i === full + 1 && half) {return "⯨ ";}
         return "☆ ";
       })}
     </span>

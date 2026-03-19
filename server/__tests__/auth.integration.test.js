@@ -53,7 +53,7 @@ describe("Integration: /api/auth (mocked JSON storage via fs)", () => {
         },
       ],
       null,
-      2
+      2,
     );
 
     const res = await request(app).post("/api/auth/register").send({
@@ -83,7 +83,7 @@ describe("Integration: /api/auth (mocked JSON storage via fs)", () => {
         },
       ],
       null,
-      2
+      2,
     );
 
     const res = await request(app).post("/api/auth/login").send({

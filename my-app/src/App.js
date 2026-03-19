@@ -13,31 +13,31 @@ import "./App.css";
 export default function App() {
   return (
     <div className="layout">
-    <Header />
-    <main className="layout__content">
-      <div className=" container">
-    <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Header />
+      <main className="layout__content">
+        <div className=" container">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
 
-      <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin" element={<AdminPage />} />
 
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-      <Route
-        path="/cabinet"
-        element={
-          <ProtectedRoute>
-            <CabinetPage />
-          </ProtectedRoute>
-        }
-      />
+            <Route
+              path="/cabinet"
+              element={
+                <ProtectedRoute>
+                  <CabinetPage />
+                </ProtectedRoute>
+              }
+            />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-      </div>
-    </main>
-    <Footer />
-  </div>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </main>
+      <Footer />
+    </div>
   );
 }

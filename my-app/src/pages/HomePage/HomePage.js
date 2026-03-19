@@ -25,7 +25,7 @@ export default function HomePage() {
       w.title.toLowerCase().includes(q) &&
       (genre === "Всі жанри" || w.genre === genre) &&
       w.rating >= min &&
-      w.rating <= max
+      w.rating <= max,
     );
   }, [query, genre, ratingMin, ratingMax]);
 

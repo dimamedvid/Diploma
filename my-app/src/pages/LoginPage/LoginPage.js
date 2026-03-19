@@ -20,7 +20,7 @@ export default function LoginPage() {
   const onSubmit = async (e) => {
     e.preventDefault();
     const res = await dispatch(loginUser(form));
-    if (res.type.endsWith("fulfilled")) navigate("/");
+    if (res.type.endsWith("fulfilled")) {navigate("/");}
   };
 
   return (

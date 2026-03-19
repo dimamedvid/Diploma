@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import HomePage from "../HomePage";
 import worksData from "../../../data/works.json";
 
@@ -7,10 +7,10 @@ function getSelectByFieldLabel(labelText) {
   const label = screen.getByText(labelText);
 
   const field = label.closest(".filters__field");
-  if (!field) throw new Error(`Не знайдено контейнер .filters__field для label: ${labelText}`);
+  if (!field) {throw new Error(`Не знайдено контейнер .filters__field для label: ${labelText}`);}
 
   const select = field.querySelector("select");
-  if (!select) throw new Error(`Не знайдено <select> у полі: ${labelText}`);
+  if (!select) {throw new Error(`Не знайдено <select> у полі: ${labelText}`);}
 
   return select;
 }

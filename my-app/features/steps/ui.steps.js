@@ -2,11 +2,11 @@ const { Given, When, Then } = require("@cucumber/cucumber");
 
 const BASE_URL = "http://localhost:3000";
 
-Given('the user opens the application at {string}', async function (url) {
+Given("the user opens the application at {string}", async function (url) {
   await this.page.goto(url);
 });
 
-Given('the user is on the home page {string}', async function (url) {
+Given("the user is on the home page {string}", async function (url) {
   await this.page.goto(url);
 });
 
@@ -17,13 +17,13 @@ When("the user navigates to the login page", async function () {
 When(
   "the user enters login {string} and password {string}",
   async function (login, password) {
-    await this.page.fill('input[name="login"]', login);
-    await this.page.fill('input[name="password"]', password);
-  }
+    await this.page.fill("input[name=\"login\"]", login);
+    await this.page.fill("input[name=\"password\"]", password);
+  },
 );
 
 When("the user submits the login form", async function () {
-  await this.page.click('button[type="submit"]');
+  await this.page.click("button[type=\"submit\"]");
 });
 
 Then("the user should be redirected to the home page", async function () {
