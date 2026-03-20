@@ -6,6 +6,15 @@ import WorksGrid from "../../components/WorksGrid/WorksGrid";
 
 import "./HomePage.css";
 
+/**
+ * Головна сторінка системи з пошуком і фільтрацією літературних творів.
+ *
+ * Компонент зберігає локальний стан параметрів пошуку,
+ * формує список доступних жанрів і обчислює відфільтрований
+ * масив творів за назвою, жанром та діапазоном рейтингу.
+ *
+ * @returns {JSX.Element} Сторінка з панеллю фільтрів і списком творів.
+ */
 export default function HomePage() {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("Всі жанри");
