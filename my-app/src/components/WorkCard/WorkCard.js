@@ -8,7 +8,7 @@ import "./WorkCard.css";
  * - половина зірки, якщо дробова частина не менша за 0.5;
  * - порожня зірка для решти позицій до 5.
  *
- * @param {Object} props - Властивості компонента.
+ * @param {object} props - Властивості компонента.
  * @param {number} props.value - Числове значення рейтингу твору.
  * @returns {JSX.Element} Відображення рейтингу у вигляді зірок.
  */
@@ -44,8 +44,8 @@ function Stars({ value }) {
  *
  * Для показу рейтингу використовується допоміжний компонент `Stars`.
  *
- * @param {Object} props - Властивості компонента.
- * @param {Object} props.work - Об'єкт літературного твору.
+ * @param {object} props - Властивості компонента.
+ * @param {object} props.work - Об'єкт літературного твору.
  * @param {string|number} props.work.id - Унікальний ідентифікатор твору.
  * @param {string} props.work.title - Назва твору.
  * @param {string} props.work.author - Автор твору.
@@ -54,7 +54,9 @@ function Stars({ value }) {
  * @param {string} props.work.description - Короткий опис твору.
  * @returns {JSX.Element} Картка літературного твору.
  */
-export default function WorkCard({ work }) {
+export default function WorkCard(props) {
+  const { work } = props;
+
   return (
     <article className="work-card">
       <div className="work-card__cover-wrapper">

@@ -11,7 +11,9 @@ module.exports = {
     "plugin:react-hooks/recommended",
     "plugin:import/recommended",
     "plugin:jsx-a11y/recommended",
+    "plugin:jsdoc/recommended",
   ],
+  plugins: ["jsdoc"],
   parserOptions: {
     ecmaVersion: "latest",
     sourceType: "module",
@@ -22,6 +24,9 @@ module.exports = {
   settings: {
     react: {
       version: "detect",
+    },
+    jsdoc: {
+      mode: "jsdoc",
     },
   },
   rules: {
@@ -38,6 +43,28 @@ module.exports = {
     "comma-dangle": ["error", "always-multiline"],
     "object-curly-spacing": ["error", "always"],
     "import/no-unresolved": "off",
+
+    "jsdoc/require-jsdoc": [
+      "warn",
+      {
+        publicOnly: true,
+        require: {
+          FunctionDeclaration: true,
+          MethodDefinition: true,
+          ClassDeclaration: true,
+        },
+      },
+    ],
+    "jsdoc/require-param-description": "off",
+    "jsdoc/require-returns-description": "off",
+    "jsdoc/check-param-names": "warn",
+    "jsdoc/check-tag-names": "warn",
+    "jsdoc/check-alignment": "warn",
+    "jsdoc/check-types": "off",
+    "jsdoc/tag-lines": "off",
+    "jsdoc/reject-function-type": "off",
+    "jsdoc/valid-types": "off",
+    "jsdoc/no-undefined-types": "off",
   },
   ignorePatterns: [
     "dist/",
@@ -46,12 +73,16 @@ module.exports = {
     "coverage/",
     "*.config.js",
     "cucumber.js",
+    "docs/generated/",
   ],
   overrides: [
     {
       files: ["**/__tests__/**/*.js", "**/*.test.js", "**/*.test.jsx"],
       env: {
         jest: true,
+      },
+      rules: {
+        "jsdoc/require-jsdoc": "off",
       },
     },
   ],
