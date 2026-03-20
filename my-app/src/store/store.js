@@ -15,8 +15,6 @@ import authReducer from "./authSlice";
  * - отримання стану через `useSelector`;
  * - виклику дій через `useDispatch`;
  * - підтримки авторизації в усьому застосунку.
- *
- * @type {import("@reduxjs/toolkit").EnhancedStore}
  */
 export const store = configureStore({
   reducer: {

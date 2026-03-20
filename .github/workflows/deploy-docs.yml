@@ -1,0 +1,114 @@
+name: Deploy documentation to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend dependencies
+        working-directory: my-app
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Generate frontend documentation
+        working-directory: my-app
+        run: npm run docs
+
+      - name: Generate backend documentation
+        working-directory: server
+        run: npm run docs
+
+      - name: Prepare Pages site
+        run: |
+          mkdir -p docs-site/frontend
+          mkdir -p docs-site/backend
+
+          cp -r my-app/docs/generated/frontend/* docs-site/frontend/
+          cp -r server/docs/generated/backend/* docs-site/backend/
+
+          cat > docs-site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="uk">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Документація проєкту</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                max-width: 900px;
+                margin: 40px auto;
+                padding: 0 16px;
+                line-height: 1.6;
+              }
+              h1 { margin-bottom: 8px; }
+              ul { padding-left: 20px; }
+              a { text-decoration: none; }
+              a:hover { text-decoration: underline; }
+              .card {
+                border: 1px solid #ddd;
+                border-radius: 10px;
+                padding: 16px;
+                margin-top: 16px;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Документація проєкту</h1>
+            <p>Автоматично згенерована документація для frontend та backend частин системи.</p>
+
+            <div class="card">
+              <h2>Розділи</h2>
+              <ul>
+                <li><a href="./frontend/index.html">Frontend documentation</a></li>
+                <li><a href="./backend/index.html">Backend documentation</a></li>
+              </ul>
+            </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site
+
+  deploy-docs:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build-docs
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -11,8 +11,6 @@ const authRoutes = require("./routes/auth.routes");
  * - підключення middleware;
  * - маршрутизацію API авторизації;
  * - health-check endpoint для перевірки доступності сервера.
- *
- * @type {import("express").Express}
  */
 const app = express();
 

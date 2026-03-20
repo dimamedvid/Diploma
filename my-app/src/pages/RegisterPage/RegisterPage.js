@@ -28,15 +28,6 @@ export default function RegisterPage() {
    *
    * Містить значення всіх полів, необхідних для створення облікового запису,
    * включно з повторним введенням пароля для перевірки збігу.
-   *
-   * @type {[{
-   *   login: string,
-   *   firstName: string,
-   *   lastName: string,
-   *   email: string,
-   *   password: string,
-   *   confirmPassword: string
-   * }, Function]}
    */
   const [form, setForm] = useState({
     login: "",
@@ -53,8 +44,6 @@ export default function RegisterPage() {
    * Використовується для відображення помилок ще до надсилання
    * запиту на сервер, наприклад при незаповнених полях
    * або невідповідності паролів.
-   *
-   * @type {[string, Function]}
    */
   const [localError, setLocalError] = useState("");
 

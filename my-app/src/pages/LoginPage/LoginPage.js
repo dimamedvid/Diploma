@@ -31,8 +31,6 @@ export default function LoginPage() {
    * Локальний стан форми входу.
    *
    * Містить значення полів логіна та пароля.
-   *
-   * @type {[{login: string, password: string}, Function]}
    */
   const [form, setForm] = useState({ login: "", password: "" });
 
