@@ -5,7 +5,7 @@
     "excludePattern": "(node_modules/|docs/|build/)"
   },
   "opts": {
-    "destination": "../docs/generated/frontend",
+    "destination": "docs/generated/frontend",
     "recurse": true,
     "readme": "../README.md"
   },

@@ -1,11 +1,11 @@
 {
   "source": {
-    "include": ["."],
+    "include": ["index.js", "routes", "middlewares", "utils"],
     "includePattern": ".+\\.js$",
-    "excludePattern": "(node_modules/|docs/|coverage/|__tests__/)"
+    "exclude": ["node_modules", "docs", "coverage", "__tests__"]
   },
   "opts": {
-    "destination": "../docs/generated/backend",
+    "destination": "docs/generated/backend",
     "recurse": true,
     "readme": "../README.md"
   },
