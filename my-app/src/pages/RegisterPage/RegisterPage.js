@@ -4,11 +4,40 @@ import { Link, useNavigate } from "react-router-dom";
 import { registerUser, clearAuthError } from "../../store/authSlice";
 import "./RegisterPage.css";
 
+/**
+ * Сторінка реєстрації нового користувача.
+ *
+ * Компонент відображає форму створення облікового запису,
+ * виконує клієнтську валідацію полів і після успішної
+ * реєстрації перенаправляє користувача на головну сторінку.
+ *
+ * Також компонент працює з глобальним станом авторизації:
+ * - отримує статус запиту;
+ * - відображає помилки з Redux store;
+ * - очищає попередні повідомлення про помилки при зміні полів.
+ *
+ * @returns {JSX.Element} Сторінка реєстрації з формою створення акаунта.
+ */
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { status, error } = useSelector((s) => s.auth);
 
+  /**
+   * Локальний стан форми реєстрації.
+   *
+   * Містить значення всіх полів, необхідних для створення облікового запису,
+   * включно з повторним введенням пароля для перевірки збігу.
+   *
+   * @type {[{
+   *   login: string,
+   *   firstName: string,
+   *   lastName: string,
+   *   email: string,
+   *   password: string,
+   *   confirmPassword: string
+   * }, Function]}
+   */
   const [form, setForm] = useState({
     login: "",
     firstName: "",
@@ -18,8 +47,28 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
 
+  /**
+   * Локальне повідомлення про помилку клієнтської валідації.
+   *
+   * Використовується для відображення помилок ще до надсилання
+   * запиту на сервер, наприклад при незаповнених полях
+   * або невідповідності паролів.
+   *
+   * @type {[string, Function]}
+   */
   const [localError, setLocalError] = useState("");
 
+  /**
+   * Обробляє зміну значень полів форми.
+   *
+   * Під час кожного введення:
+   * - очищає серверну помилку авторизації;
+   * - очищає локальну помилку валідації;
+   * - оновлює відповідне поле у стані форми.
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Подія зміни поля вводу.
+   * @returns {void}
+   */
   const onChange = (e) => {
     dispatch(clearAuthError());
     setLocalError("");
@@ -27,6 +76,20 @@ export default function RegisterPage() {
     setForm((p) => ({ ...p, [name]: value }));
   };
 
+  /**
+   * Виконує клієнтську валідацію форми реєстрації.
+   *
+   * Перевіряє:
+   * - заповнення всіх обов'язкових полів;
+   * - формат логіна;
+   * - довжину імені та прізвища;
+   * - формат email;
+   * - складність пароля;
+   * - збіг пароля і підтвердження пароля.
+   *
+   * @returns {string} Порожній рядок, якщо форма коректна,
+   * або текст повідомлення про помилку.
+   */
   const validate = () => {
     if (
       !form.login ||
@@ -66,6 +129,20 @@ export default function RegisterPage() {
     return "";
   };
 
+  /**
+   * Обробляє відправлення форми реєстрації.
+   *
+   * Спочатку виконує клієнтську валідацію. Якщо форма не проходить перевірку,
+   * показує повідомлення про помилку і не надсилає запит на сервер.
+   *
+   * Якщо форма валідна, запускає Redux thunk `registerUser`.
+   * Після успішної реєстрації перенаправляє користувача
+   * на головну сторінку застосунку.
+   *
+   * @async
+   * @param {React.FormEvent<HTMLFormElement>} e - Подія відправлення форми.
+   * @returns {Promise<void>}
+   */
   const onSubmit = async (e) => {
     e.preventDefault();
 
@@ -85,7 +162,9 @@ export default function RegisterPage() {
       }),
     );
 
-    if (res.type.endsWith("fulfilled")) {navigate("/");}
+    if (res.type.endsWith("fulfilled")) {
+      navigate("/");
+    }
   };
 
   return (

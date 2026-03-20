@@ -4,24 +4,105 @@ const { readUsers, writeUsers } = require("../utils/fileDb");
 const { signToken } = require("../utils/jwt");
 const { authMiddleware } = require("../middlewares/auth.middleware");
 
+/**
+ * Маршрути авторизації та реєстрації користувачів.
+ *
+ * Модуль реалізує API для:
+ * - реєстрації нового користувача;
+ * - входу в систему;
+ * - отримання даних поточного авторизованого користувача.
+ *
+ * У процесі обробки запитів використовуються:
+ * - валідація вхідних даних;
+ * - перевірка унікальності логіна та email;
+ * - хешування пароля;
+ * - генерація JWT-токена;
+ * - middleware перевірки авторизації.
+ */
+
 const router = express.Router();
 
+/**
+ * Нормалізує email перед валідацією або порівнянням.
+ *
+ * Видаляє зайві пробіли на початку та в кінці рядка
+ * і переводить email до нижнього регістру.
+ *
+ * @param {string} email - Email, отриманий із запиту або сховища.
+ * @returns {string} Нормалізований email.
+ */
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
 
+/**
+ * Перевіряє коректність формату email.
+ *
+ * Використовує регулярний вираз для базової перевірки,
+ * що email містить локальну частину, символ `@`
+ * та доменну частину.
+ *
+ * @param {string} email - Email для перевірки.
+ * @returns {boolean} `true`, якщо email має коректний формат, інакше `false`.
+ */
 function isEmailValid(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/**
+ * Перевіряє коректність логіна.
+ *
+ * Логін повинен містити від 4 до 25 символів
+ * і складатися лише з латинських літер та цифр.
+ *
+ * @param {string} login - Логін користувача.
+ * @returns {boolean} `true`, якщо логін відповідає правилам, інакше `false`.
+ */
 function isLoginValid(login) {
   return /^[a-zA-Z0-9]{4,25}$/.test(login);
 }
 
+/**
+ * Перевіряє коректність пароля.
+ *
+ * Пароль повинен:
+ * - містити від 8 до 20 символів;
+ * - містити хоча б одну літеру;
+ * - містити хоча б одну цифру.
+ *
+ * @param {string} password - Пароль користувача.
+ * @returns {boolean} `true`, якщо пароль відповідає правилам, інакше `false`.
+ */
 function isPasswordValid(password) {
   return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,20}$/.test(password);
 }
 
+/**
+ * POST /api/auth/register
+ *
+ * Реєструє нового користувача в системі.
+ *
+ * Алгоритм обробки:
+ * 1. Отримує та нормалізує дані з тіла запиту.
+ * 2. Перевіряє обов'язкові поля.
+ * 3. Виконує валідацію логіна, імені, прізвища, email і пароля.
+ * 4. Завантажує список користувачів із файлового сховища.
+ * 5. Перевіряє унікальність логіна та email.
+ * 6. Хешує пароль.
+ * 7. Створює нового користувача та зберігає його у сховищі.
+ * 8. Генерує JWT-токен і повертає публічні дані користувача.
+ *
+ * @async
+ * @param {Object} req - HTTP-запит Express.
+ * @param {Object} req.body - Тіло запиту з даними користувача.
+ * @param {string} req.body.login - Логін користувача.
+ * @param {string} req.body.firstName - Ім'я користувача.
+ * @param {string} req.body.lastName - Прізвище користувача.
+ * @param {string} req.body.email - Email користувача.
+ * @param {string} req.body.password - Пароль користувача.
+ * @param {Object} res - HTTP-відповідь Express.
+ * @returns {Promise<Object>} JSON-об'єкт із токеном та даними користувача.
+ */
 router.post("/register", async (req, res) => {
   const login = String(req.body.login || "").trim();
   const firstName = String(req.body.firstName || "").trim();
@@ -58,10 +139,14 @@ router.post("/register", async (req, res) => {
   const loginExists = users.some(
     (u) => String(u.login || "").trim().toLowerCase() === login.toLowerCase(),
   );
-  if (loginExists) {return res.status(409).json({ message: "Такий логін вже зайнятий." });}
+  if (loginExists) {
+    return res.status(409).json({ message: "Такий логін вже зайнятий." });
+  }
 
   const emailExists = users.some((u) => normalizeEmail(u.email) === email);
-  if (emailExists) {return res.status(409).json({ message: "Такий email вже зареєстрований." });}
+  if (emailExists) {
+    return res.status(409).json({ message: "Такий email вже зареєстрований." });
+  }
 
   const passwordHash = await bcrypt.hash(password, 10);
 
@@ -99,6 +184,27 @@ router.post("/register", async (req, res) => {
   });
 });
 
+/**
+ * POST /api/auth/login
+ *
+ * Авторизує користувача в системі.
+ *
+ * Алгоритм обробки:
+ * 1. Отримує логін або email і пароль із тіла запиту.
+ * 2. Перевіряє, що обидва поля заповнені.
+ * 3. Завантажує список користувачів із файлового сховища.
+ * 4. Шукає користувача спочатку за логіном, потім за email.
+ * 5. Перевіряє правильність пароля через bcrypt.
+ * 6. Генерує JWT-токен і повертає публічні дані користувача.
+ *
+ * @async
+ * @param {Object} req - HTTP-запит Express.
+ * @param {Object} req.body - Тіло запиту з обліковими даними.
+ * @param {string} req.body.login - Логін або email користувача.
+ * @param {string} req.body.password - Пароль користувача.
+ * @param {Object} res - HTTP-відповідь Express.
+ * @returns {Promise<Object>} JSON-об'єкт із токеном та даними користувача.
+ */
 router.post("/login", async (req, res) => {
   const loginInput = String(req.body.login || "").trim();
   const password = String(req.body.password || "");
@@ -118,10 +224,14 @@ router.post("/login", async (req, res) => {
     user = users.find((u) => normalizeEmail(u.email) === asEmail);
   }
 
-  if (!user) {return res.status(401).json({ message: "Невірний логін або пароль." });}
+  if (!user) {
+    return res.status(401).json({ message: "Невірний логін або пароль." });
+  }
 
   const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) {return res.status(401).json({ message: "Невірний логін або пароль." });}
+  if (!ok) {
+    return res.status(401).json({ message: "Невірний логін або пароль." });
+  }
 
   const token = signToken({
     id: user.id,
@@ -143,6 +253,20 @@ router.post("/login", async (req, res) => {
   });
 });
 
+/**
+ * GET /api/auth/me
+ *
+ * Повертає дані поточного авторизованого користувача.
+ *
+ * Маршрут є захищеним і працює тільки після успішного
+ * проходження middleware `authMiddleware`, який перевіряє JWT
+ * та записує декодовані дані користувача у `req.user`.
+ *
+ * @param {Object} req - HTTP-запит Express.
+ * @param {Object} req.user - Дані авторизованого користувача з JWT payload.
+ * @param {Object} res - HTTP-відповідь Express.
+ * @returns {Object} JSON-об'єкт із даними поточного користувача.
+ */
 router.get("/me", authMiddleware, (req, res) => {
   return res.json({ user: req.user });
 });

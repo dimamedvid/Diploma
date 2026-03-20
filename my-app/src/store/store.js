@@ -1,6 +1,23 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./authSlice";
 
+/**
+ * Глобальне Redux-сховище клієнтської частини застосунку.
+ *
+ * Store відповідає за централізоване збереження стану,
+ * доступного різним компонентам інтерфейсу.
+ *
+ * На поточному етапі містить модуль:
+ * - `auth` — стан авторизації користувача, включно з токеном,
+ *   даними профілю, статусом запитів і повідомленнями про помилки.
+ *
+ * Store використовується разом із React Redux для:
+ * - отримання стану через `useSelector`;
+ * - виклику дій через `useDispatch`;
+ * - підтримки авторизації в усьому застосунку.
+ *
+ * @type {import("@reduxjs/toolkit").EnhancedStore}
+ */
 export const store = configureStore({
   reducer: {
     auth: authReducer,

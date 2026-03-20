@@ -1,5 +1,29 @@
 import "./FiltersBar.css";
 
+/**
+ * Панель пошуку та фільтрації літературних творів.
+ *
+ * Компонент відображає елементи керування для:
+ * - пошуку творів за назвою;
+ * - вибору жанру;
+ * - вибору мінімального рейтингу;
+ * - вибору максимального рейтингу.
+ *
+ * Усі значення та функції зміни стану передаються з батьківського
+ * компонента, тому `FiltersBar` є керованим презентаційним компонентом.
+ *
+ * @param {Object} props - Властивості компонента.
+ * @param {string} props.query - Поточний текст пошукового запиту.
+ * @param {Function} props.onQueryChange - Функція зміни пошукового запиту.
+ * @param {string} props.genre - Поточне значення вибраного жанру.
+ * @param {Function} props.onGenreChange - Функція зміни жанру.
+ * @param {string[]} props.genres - Список доступних жанрів.
+ * @param {string|number} props.ratingMin - Поточне значення мінімального рейтингу.
+ * @param {Function} props.onRatingMinChange - Функція зміни мінімального рейтингу.
+ * @param {string|number} props.ratingMax - Поточне значення максимального рейтингу.
+ * @param {Function} props.onRatingMaxChange - Функція зміни максимального рейтингу.
+ * @returns {JSX.Element} Панель фільтрів і пошуку.
+ */
 export default function FiltersBar({
   query,
   onQueryChange,

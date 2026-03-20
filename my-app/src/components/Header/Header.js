@@ -4,14 +4,47 @@ import { logout } from "../../store/authSlice";
 import icon from "../../assets/icon.png";
 import "./Header.css";
 
+/**
+ * Верхня панель навігації застосунку.
+ *
+ * Компонент відображає:
+ * - логотип і назву системи;
+ * - основну навігацію;
+ * - кнопки входу, реєстрації, переходу в особистий кабінет;
+ * - кнопку виходу з акаунту.
+ *
+ * Вміст шапки залежить від стану авторизації користувача.
+ * Якщо користувач увійшов у систему, показуються кнопки
+ * для переходу до кабінету та виходу.
+ * Якщо користувач не авторизований, показуються кнопки
+ * входу та реєстрації.
+ *
+ * Якщо авторизований користувач має роль `moderator`,
+ * додатково відображається посилання на сторінку модерації.
+ *
+ * @returns {JSX.Element} Верхня панель навігації застосунку.
+ */
 export default function Header() {
   const dispatch = useDispatch();
   const { isLoggedIn, user } = useSelector((s) => s.auth);
 
+  /**
+   * Виконує вихід користувача з акаунту.
+   *
+   * Очищає стан авторизації у Redux store
+   * та прибирає збережені дані сесії.
+   *
+   * @returns {void}
+   */
   const onLogout = () => {
     dispatch(logout());
   };
 
+  /**
+   * Прапорець, який визначає, чи є поточний користувач модератором.
+   *
+   * @type {boolean}
+   */
   const isModerator = isLoggedIn && user?.role === "moderator";
 
   return (
@@ -36,7 +69,11 @@ export default function Header() {
               <Link className="header__button" to="/cabinet">
                 Особистий кабінет
               </Link>
-              <button className="header__button header__button--outline" type="button" onClick={onLogout}>
+              <button
+                className="header__button header__button--outline"
+                type="button"
+                onClick={onLogout}
+              >
                 Вийти
               </button>
             </>

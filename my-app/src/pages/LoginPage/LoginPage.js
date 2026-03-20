@@ -4,23 +4,71 @@ import { Link, useNavigate } from "react-router-dom";
 import { loginUser, clearAuthError } from "../../store/authSlice";
 import "./LoginPage.css";
 
+/**
+ * Сторінка входу користувача в систему.
+ *
+ * Компонент відображає форму авторизації, дозволяє користувачу
+ * ввести логін і пароль, а також виконує вхід через Redux thunk
+ * `loginUser`.
+ *
+ * Під час введення даних попереднє повідомлення про помилку
+ * очищується через `clearAuthError`. Після успішної авторизації
+ * користувач перенаправляється на головну сторінку.
+ *
+ * Стан компонента включає:
+ * - локальний стан форми входу;
+ * - глобальний стан авторизації з Redux store;
+ * - статус виконання запиту та текст помилки.
+ *
+ * @returns {JSX.Element} Сторінка входу з формою авторизації.
+ */
 export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { status, error } = useSelector((s) => s.auth);
 
+  /**
+   * Локальний стан форми входу.
+   *
+   * Містить значення полів логіна та пароля.
+   *
+   * @type {[{login: string, password: string}, Function]}
+   */
   const [form, setForm] = useState({ login: "", password: "" });
 
+  /**
+   * Обробляє зміну значень полів форми.
+   *
+   * Під час кожного введення:
+   * - очищає попередню помилку авторизації;
+   * - оновлює відповідне поле у локальному стані форми.
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Подія зміни поля вводу.
+   * @returns {void}
+   */
   const onChange = (e) => {
     dispatch(clearAuthError());
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
   };
 
+  /**
+   * Обробляє відправлення форми входу.
+   *
+   * Скасовує стандартну поведінку форми, запускає асинхронний
+   * thunk `loginUser` і після успішної авторизації
+   * перенаправляє користувача на головну сторінку.
+   *
+   * @async
+   * @param {React.FormEvent<HTMLFormElement>} e - Подія відправлення форми.
+   * @returns {Promise<void>}
+   */
   const onSubmit = async (e) => {
     e.preventDefault();
     const res = await dispatch(loginUser(form));
-    if (res.type.endsWith("fulfilled")) {navigate("/");}
+    if (res.type.endsWith("fulfilled")) {
+      navigate("/");
+    }
   };
 
   return (
