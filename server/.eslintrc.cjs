@@ -17,6 +17,13 @@ module.exports = {
   settings: {
     jsdoc: {
       mode: "jsdoc",
+      structuredTags: {
+        openapi: {
+          type: false,
+          name: false,
+          required: [],
+        },
+      },
     },
   },
   rules: {
@@ -44,12 +51,13 @@ module.exports = {
     "jsdoc/require-param-description": "off",
     "jsdoc/require-returns-description": "off",
     "jsdoc/check-param-names": "warn",
-    "jsdoc/check-tag-names": "warn",
+    "jsdoc/check-tag-names": ["warn", { definedTags: ["openapi"] }],
     "jsdoc/check-alignment": "warn",
     "jsdoc/check-types": "off",
     "jsdoc/tag-lines": "off",
     "jsdoc/reject-function-type": "off",
     "jsdoc/valid-types": "off",
+    "jsdoc/no-undefined-types": "off",
   },
   ignorePatterns: [
     "node_modules/",

@@ -78,6 +78,68 @@ function isPasswordValid(password) {
 }
 
 /**
+ * @openapi
+ * /api/auth/register:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Реєстрація нового користувача
+ *     description: Створює нового користувача, хешує пароль і повертає JWT-токен та дані користувача.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RegisterRequest'
+ *           examples:
+ *             default:
+ *               value:
+ *                 login: user123
+ *                 firstName: Dmytro
+ *                 lastName: Medvid
+ *                 email: user@mail.com
+ *                 password: Passw0rd123
+ *     responses:
+ *       "200":
+ *         description: Користувача успішно зареєстровано
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthSuccessResponse'
+ *             examples:
+ *               success:
+ *                 value:
+ *                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                   user:
+ *                     id: "1740000000000"
+ *                     login: user123
+ *                     firstName: Dmytro
+ *                     lastName: Medvid
+ *                     email: user@mail.com
+ *                     role: user
+ *       "400":
+ *         description: Помилка валідації вхідних даних
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missingFields:
+ *                 value:
+ *                   message: Будь ласка, заповніть усі обов’язкові поля.
+ *       "409":
+ *         description: Конфлікт через зайнятий логін або email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               duplicateLogin:
+ *                 value:
+ *                   message: Такий логін вже зайнятий.
+ */
+
+/**
  * POST /api/auth/register
  *
  * Реєструє нового користувача в системі.
@@ -185,6 +247,65 @@ router.post("/register", async (req, res) => {
 });
 
 /**
+ * @openapi
+ * /api/auth/login:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Вхід користувача в систему
+ *     description: Перевіряє логін або email та пароль, після чого повертає JWT-токен і дані користувача.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *           examples:
+ *             default:
+ *               value:
+ *                 login: user123
+ *                 password: Passw0rd123
+ *     responses:
+ *       "200":
+ *         description: Успішна авторизація
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthSuccessResponse'
+ *             examples:
+ *               success:
+ *                 value:
+ *                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                   user:
+ *                     id: "1740000000000"
+ *                     login: user123
+ *                     firstName: Dmytro
+ *                     lastName: Medvid
+ *                     email: user@mail.com
+ *                     role: user
+ *       "400":
+ *         description: Не передано логін або пароль
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missingData:
+ *                 value:
+ *                   message: Будь ласка, введіть логін і пароль.
+ *       "401":
+ *         description: Невірний логін або пароль
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               invalidCredentials:
+ *                 value:
+ *                   message: Невірний логін або пароль.
+ */
+
+/**
  * POST /api/auth/login
  *
  * Авторизує користувача в системі.
@@ -252,6 +373,45 @@ router.post("/login", async (req, res) => {
     },
   });
 });
+
+/**
+ * @openapi
+ * /api/auth/me:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Отримання даних поточного користувача
+ *     description: Повертає payload користувача з валідного JWT-токена.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       "200":
+ *         description: Дані поточного авторизованого користувача
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MeResponse'
+ *             examples:
+ *               success:
+ *                 value:
+ *                   user:
+ *                     id: "1740000000000"
+ *                     login: user123
+ *                     email: user@mail.com
+ *                     role: user
+ *                     iat: 1710000000
+ *                     exp: 1710600000
+ *       "401":
+ *         description: Токен відсутній або невалідний
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missingToken:
+ *                 value:
+ *                   message: No token
+ */
 
 /**
  * GET /api/auth/me

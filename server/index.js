@@ -1,7 +1,9 @@
 const express = require("express");
 const cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
 
 const authRoutes = require("./routes/auth.routes");
+const swaggerSpec = require("./docs/swagger");
 
 /**
  * Основний Express-застосунок серверної частини.
@@ -10,6 +12,7 @@ const authRoutes = require("./routes/auth.routes");
  * - обробку HTTP-запитів;
  * - підключення middleware;
  * - маршрутизацію API авторизації;
+ * - надання Swagger UI та OpenAPI JSON;
  * - health-check endpoint для перевірки доступності сервера.
  */
 const app = express();
@@ -37,15 +40,54 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 
 /**
+ * Swagger UI для інтерактивного перегляду і тестування API.
+ *
+ * Документація доступна за адресою `/api/docs`.
+ */
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
+
+/**
+ * OpenAPI JSON-специфікація API.
+ *
+ * Машиночитний опис API доступний за адресою `/api/docs.json`.
+ *
+ * @param {object} req - HTTP-запит Express.
+ * @param {object} res - HTTP-відповідь Express.
+ * @returns {object} JSON-специфікація OpenAPI.
+ */
+app.get("/api/docs.json", (req, res) => res.json(swaggerSpec));
+
+/**
+ * @openapi
+ * /api/health:
+ *   get:
+ *     tags:
+ *       - System
+ *     summary: Перевірка доступності сервера
+ *     description: Технічний endpoint для перевірки того, що backend працює.
+ *     responses:
+ *       "200":
+ *         description: Сервер доступний
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthResponse'
+ *             examples:
+ *               success:
+ *                 value:
+ *                   ok: true
+ */
+
+/**
  * GET /api/health
  *
  * Технічний endpoint для перевірки доступності сервера.
  * Використовується для health-check, тестування та перевірки,
  * чи backend запущений і може відповідати на запити.
  *
- * @param {Object} req - HTTP-запит Express.
- * @param {Object} res - HTTP-відповідь Express.
- * @returns {Object} JSON-об'єкт зі статусом доступності сервера.
+ * @param {object} req - HTTP-запит Express.
+ * @param {object} res - HTTP-відповідь Express.
+ * @returns {object} JSON-об'єкт зі статусом доступності сервера.
  */
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
