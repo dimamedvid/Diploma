@@ -1,0 +1,13 @@
+{
+  "source": {
+    "include": ["."],
+    "includePattern": ".+\\.js$",
+    "excludePattern": "(node_modules/|docs/|coverage/|__tests__/)"
+  },
+  "opts": {
+    "destination": "../docs/generated/backend",
+    "recurse": true,
+    "readme": "../README.md"
+  },
+  "plugins": ["plugins/markdown"]
+}

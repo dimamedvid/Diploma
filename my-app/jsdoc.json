@@ -1,0 +1,13 @@
+{
+  "source": {
+    "include": ["src"],
+    "includePattern": ".+\\.js$",
+    "excludePattern": "(node_modules/|docs/|build/)"
+  },
+  "opts": {
+    "destination": "../docs/generated/frontend",
+    "recurse": true,
+    "readme": "../README.md"
+  },
+  "plugins": ["plugins/markdown"]
+}
