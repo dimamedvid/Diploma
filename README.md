@@ -414,11 +414,12 @@ npm start
 
 ---
 
-## Документація з розгортання
+## Документація
 
-Production-інструкція для release engineer / DevOps знаходиться у файлі:
+Додаткова документація проєкту знаходиться в теці `docs`:
 
-- `docs/deployment.md`
+- `docs/deployment.md` , інструкція з production-розгортання
+- `docs/update.md` , інструкція з оновлення проєкту
 
 ---
 
