@@ -1,12 +1,41 @@
+const crypto = require("crypto");
 const { createModuleLogger } = require("../utils/logger");
 
 const log = createModuleLogger("errorHandler");
 
 /**
+ * Видаляє чутливі поля з тіла запиту перед логуванням.
+ *
+ * Це потрібно для того, щоб не записувати у логи
+ * паролі, токени або інші секретні дані.
+ *
+ * @param {Object} body - Тіло HTTP-запиту.
+ * @returns {Object} Безпечна копія тіла запиту.
+ */
+function sanitizeBody(body = {}) {
+  const sanitized = { ...body };
+
+  if ("password" in sanitized) {
+    sanitized.password = "[REDACTED]";
+  }
+
+  if ("token" in sanitized) {
+    sanitized.token = "[REDACTED]";
+  }
+
+  return sanitized;
+}
+
+/**
  * Централізований middleware для обробки помилок Express.
  *
- * Логує необроблені помилки застосунку та повертає
- * контрольовану JSON-відповідь клієнту.
+ * Логує необроблені помилки застосунку, додає:
+ * - унікальний `errorId`;
+ * - `requestId`;
+ * - контекст запиту;
+ * - технічну інформацію для діагностики.
+ *
+ * Для клієнта повертає уніфіковану JSON-відповідь.
  *
  * @param {Error} err - Об'єкт помилки.
  * @param {Object} req - HTTP-запит Express.
@@ -19,19 +48,39 @@ function errorHandler(err, req, res, next) {
     return next(err);
   }
 
-  log.error("Unhandled application error", {
+  const statusCode = err.statusCode || 500;
+  const errorId = err.errorId || crypto.randomUUID();
+
+  const context = {
+    errorId,
+    requestId: req.requestId,
     method: req.method,
     url: req.originalUrl,
     ip: req.ip,
+    userId: req.user?.id || null,
+    params: req.params,
+    query: req.query,
+    body: sanitizeBody(req.body),
+    details: err.details || {},
     errorMessage: err.message,
     stack: err.stack,
-  });
+  };
 
-  return res.status(err.statusCode || 500).json({
+  if (statusCode >= 500) {
+    log.error("Unhandled application error", context);
+  } else {
+    log.warning("Handled application error", context);
+  }
+
+  return res.status(statusCode).json({
+    success: false,
+    errorId,
+    requestId: req.requestId,
     message:
-      err.statusCode && err.statusCode < 500
-        ? err.message
-        : "Внутрішня помилка сервера",
+      statusCode >= 500
+        ? "Внутрішня помилка сервера. Спробуйте пізніше або зверніться до підтримки."
+        : err.message,
+    details: statusCode < 500 ? err.details || {} : {},
   });
 }
 

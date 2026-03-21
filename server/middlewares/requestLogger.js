@@ -5,8 +5,12 @@ const log = createModuleLogger("request");
 /**
  * Middleware для базового логування HTTP-запитів.
  *
- * Логує початок запиту та завершення відповіді,
- * включаючи метод, URL, статус-код і тривалість виконання.
+ * Логує:
+ * - початок обробки запиту;
+ * - завершення відповіді;
+ * - статус-код;
+ * - тривалість виконання;
+ * - унікальний `requestId`.
  *
  * @param {Object} req - HTTP-запит Express.
  * @param {Object} res - HTTP-відповідь Express.
@@ -17,6 +21,7 @@ function requestLogger(req, res, next) {
   const start = Date.now();
 
   log.info("HTTP request started", {
+    requestId: req.requestId,
     method: req.method,
     url: req.originalUrl,
     ip: req.ip,
@@ -26,10 +31,12 @@ function requestLogger(req, res, next) {
     const durationMs = Date.now() - start;
 
     const meta = {
+      requestId: req.requestId,
       method: req.method,
       url: req.originalUrl,
       statusCode: res.statusCode,
       durationMs,
+      userId: req.user?.id || null,
     };
 
     if (res.statusCode >= 500) {

@@ -1,5 +1,6 @@
 const { verifyToken } = require("../utils/jwt");
 const { createModuleLogger } = require("../utils/logger");
+const AppError = require("../utils/AppError");
 
 const log = createModuleLogger("auth.middleware");
 
@@ -23,7 +24,7 @@ const log = createModuleLogger("auth.middleware");
  * 2. Перевіряє, чи має він формат `Bearer <token>`.
  * 3. Викликає `verifyToken()` для декодування і перевірки токена.
  * 4. Якщо токен валідний, записує payload у `req.user`.
- * 5. Якщо токен відсутній або недійсний, повертає відповідь з кодом 401.
+ * 5. Якщо токен відсутній або недійсний, передає контрольовану помилку далі.
  *
  * @param {Object} req - HTTP-запит Express.
  * @param {Object} req.headers - Заголовки запиту.
@@ -37,12 +38,17 @@ function authMiddleware(req, res, next) {
 
   if (type !== "Bearer" || !token) {
     log.warning("Authorization failed: no token provided", {
+      requestId: req.requestId,
       method: req.method,
       url: req.originalUrl,
       ip: req.ip,
     });
 
-    return res.status(401).json({ message: "No token" });
+    return next(
+      new AppError("Для доступу до цього ресурсу потрібно увійти в систему.", 401, {
+        reason: "NO_TOKEN",
+      }),
+    );
   }
 
   try {
@@ -50,6 +56,7 @@ function authMiddleware(req, res, next) {
     req.user = payload;
 
     log.debug("Token verified successfully", {
+      requestId: req.requestId,
       method: req.method,
       url: req.originalUrl,
       userId: payload.id,
@@ -59,13 +66,18 @@ function authMiddleware(req, res, next) {
     return next();
   } catch (error) {
     log.warning("Authorization failed: invalid token", {
+      requestId: req.requestId,
       method: req.method,
       url: req.originalUrl,
       ip: req.ip,
       errorMessage: error.message,
     });
 
-    return res.status(401).json({ message: "Invalid token" });
+    return next(
+      new AppError("Сесія недійсна або завершилась. Увійдіть у систему повторно.", 401, {
+        reason: "INVALID_TOKEN",
+      }),
+    );
   }
 }
 

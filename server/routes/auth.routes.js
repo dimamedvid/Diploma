@@ -4,6 +4,7 @@ const { readUsers, writeUsers } = require("../utils/fileDb");
 const { signToken } = require("../utils/jwt");
 const { authMiddleware } = require("../middlewares/auth.middleware");
 const { createModuleLogger } = require("../utils/logger");
+const AppError = require("../utils/AppError");
 
 /**
  * Маршрути авторизації та реєстрації користувачів.
@@ -18,7 +19,8 @@ const { createModuleLogger } = require("../utils/logger");
  * - перевірка унікальності логіна та email;
  * - хешування пароля;
  * - генерація JWT-токена;
- * - middleware перевірки авторизації.
+ * - middleware перевірки авторизації;
+ * - централізована обробка помилок через AppError.
  */
 
 const router = express.Router();
@@ -156,6 +158,9 @@ function isPasswordValid(password) {
  * 7. Створює нового користувача та зберігає його у сховищі.
  * 8. Генерує JWT-токен і повертає публічні дані користувача.
  *
+ * У разі помилки створює контрольований AppError
+ * або передає технічний виняток у централізований error handler.
+ *
  * @async
  * @param {Object} req - HTTP-запит Express.
  * @param {Object} req.body - Тіло запиту з даними користувача.
@@ -166,7 +171,7 @@ function isPasswordValid(password) {
  * @param {string} req.body.password - Пароль користувача.
  * @param {Object} res - HTTP-відповідь Express.
  * @param {Function} next - Функція переходу до наступного middleware.
- * @returns {Promise<Object>} JSON-об'єкт із токеном та даними користувача.
+ * @returns {Promise<Object|void>} JSON-об'єкт із токеном та даними користувача.
  */
 router.post("/register", async (req, res, next) => {
   try {
@@ -176,36 +181,58 @@ router.post("/register", async (req, res, next) => {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password || "");
 
-    log.info("User registration attempt", { login, email });
+    log.info("User registration attempt", {
+      requestId: req.requestId,
+      login,
+      email,
+    });
 
     if (!login || !firstName || !lastName || !email || !password) {
-      log.warning("Registration validation failed: missing required fields", { login, email });
-      return res.status(400).json({ message: "Будь ласка, заповніть усі обов’язкові поля." });
+      throw new AppError("Будь ласка, заповніть усі обов’язкові поля.", 400, {
+        field: "common",
+        reason: "MISSING_REQUIRED_FIELDS",
+      });
     }
 
     if (!isLoginValid(login)) {
-      log.warning("Registration validation failed: invalid login", { login, email });
-      return res.status(400).json({ message: "Логін: 4–25 символів, латинські літери/цифри." });
+      throw new AppError("Логін має містити 4–25 символів, лише латинські літери та цифри.", 400, {
+        field: "login",
+        value: login,
+        reason: "INVALID_LOGIN_FORMAT",
+      });
     }
 
     if (firstName.length < 1 || firstName.length > 50) {
-      log.warning("Registration validation failed: invalid firstName length", { login, email });
-      return res.status(400).json({ message: "Ім’я: 1–50 символів." });
+      throw new AppError("Ім’я повинно містити від 1 до 50 символів.", 400, {
+        field: "firstName",
+        reason: "INVALID_FIRST_NAME_LENGTH",
+      });
     }
 
     if (lastName.length < 1 || lastName.length > 50) {
-      log.warning("Registration validation failed: invalid lastName length", { login, email });
-      return res.status(400).json({ message: "Прізвище: 1–50 символів." });
+      throw new AppError("Прізвище повинно містити від 1 до 50 символів.", 400, {
+        field: "lastName",
+        reason: "INVALID_LAST_NAME_LENGTH",
+      });
     }
 
     if (!isEmailValid(email)) {
-      log.warning("Registration validation failed: invalid email", { login, email });
-      return res.status(400).json({ message: "Email має бути у форматі name@mail.com." });
+      throw new AppError("Email має бути у форматі name@mail.com.", 400, {
+        field: "email",
+        value: email,
+        reason: "INVALID_EMAIL_FORMAT",
+      });
     }
 
     if (!isPasswordValid(password)) {
-      log.warning("Registration validation failed: invalid password format", { login, email });
-      return res.status(400).json({ message: "Пароль: 8–20 символів, мінімум 1 літера і 1 цифра." });
+      throw new AppError(
+        "Пароль має містити 8–20 символів, щонайменше одну літеру та одну цифру.",
+        400,
+        {
+          field: "password",
+          reason: "INVALID_PASSWORD_FORMAT",
+        },
+      );
     }
 
     const users = readUsers();
@@ -214,14 +241,20 @@ router.post("/register", async (req, res, next) => {
       (u) => String(u.login || "").trim().toLowerCase() === login.toLowerCase(),
     );
     if (loginExists) {
-      log.warning("Registration conflict: login already exists", { login, email });
-      return res.status(409).json({ message: "Такий логін вже зайнятий." });
+      throw new AppError("Такий логін уже зайнятий.", 409, {
+        field: "login",
+        value: login,
+        reason: "LOGIN_ALREADY_EXISTS",
+      });
     }
 
     const emailExists = users.some((u) => normalizeEmail(u.email) === email);
     if (emailExists) {
-      log.warning("Registration conflict: email already exists", { login, email });
-      return res.status(409).json({ message: "Такий email вже зареєстрований." });
+      throw new AppError("Такий email уже зареєстрований.", 409, {
+        field: "email",
+        value: email,
+        reason: "EMAIL_ALREADY_EXISTS",
+      });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -248,6 +281,7 @@ router.post("/register", async (req, res, next) => {
     });
 
     log.info("User registered successfully", {
+      requestId: req.requestId,
       userId: newUser.id,
       login: newUser.login,
       email: newUser.email,
@@ -255,6 +289,7 @@ router.post("/register", async (req, res, next) => {
     });
 
     return res.json({
+      success: true,
       token,
       user: {
         id: newUser.id,
@@ -266,11 +301,15 @@ router.post("/register", async (req, res, next) => {
       },
     });
   } catch (error) {
-    log.error("User registration failed with exception", {
-      login: req.body?.login,
-      email: req.body?.email,
-      errorMessage: error.message,
-    });
+    if (!(error instanceof AppError)) {
+      log.error("User registration failed with exception", {
+        requestId: req.requestId,
+        login: req.body?.login,
+        email: req.body?.email,
+        errorMessage: error.message,
+      });
+    }
+
     return next(error);
   }
 });
@@ -347,6 +386,9 @@ router.post("/register", async (req, res, next) => {
  * 5. Перевіряє правильність пароля через bcrypt.
  * 6. Генерує JWT-токен і повертає публічні дані користувача.
  *
+ * У разі помилки створює контрольований AppError
+ * або передає технічний виняток у централізований error handler.
+ *
  * @async
  * @param {Object} req - HTTP-запит Express.
  * @param {Object} req.body - Тіло запиту з обліковими даними.
@@ -354,18 +396,23 @@ router.post("/register", async (req, res, next) => {
  * @param {string} req.body.password - Пароль користувача.
  * @param {Object} res - HTTP-відповідь Express.
  * @param {Function} next - Функція переходу до наступного middleware.
- * @returns {Promise<Object>} JSON-об'єкт із токеном та даними користувача.
+ * @returns {Promise<Object|void>} JSON-об'єкт із токеном та даними користувача.
  */
 router.post("/login", async (req, res, next) => {
   try {
     const loginInput = String(req.body.login || "").trim();
     const password = String(req.body.password || "");
 
-    log.info("User login attempt", { loginInput });
+    log.info("User login attempt", {
+      requestId: req.requestId,
+      loginInput,
+    });
 
     if (!loginInput || !password) {
-      log.warning("Login validation failed: missing credentials", { loginInput });
-      return res.status(400).json({ message: "Будь ласка, введіть логін і пароль." });
+      throw new AppError("Будь ласка, введіть логін або email та пароль.", 400, {
+        field: "common",
+        reason: "MISSING_CREDENTIALS",
+      });
     }
 
     const users = readUsers();
@@ -380,18 +427,19 @@ router.post("/login", async (req, res, next) => {
     }
 
     if (!user) {
-      log.warning("Login failed: user not found", { loginInput });
-      return res.status(401).json({ message: "Невірний логін або пароль." });
+      throw new AppError("Користувача з такими даними не знайдено або пароль неправильний.", 401, {
+        field: "login",
+        value: loginInput,
+        reason: "USER_NOT_FOUND",
+      });
     }
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
-      log.warning("Login failed: invalid password", {
-        userId: user.id,
-        login: user.login,
-        email: user.email,
+      throw new AppError("Користувача з такими даними не знайдено або пароль неправильний.", 401, {
+        field: "password",
+        reason: "INVALID_PASSWORD",
       });
-      return res.status(401).json({ message: "Невірний логін або пароль." });
     }
 
     const token = signToken({
@@ -402,6 +450,7 @@ router.post("/login", async (req, res, next) => {
     });
 
     log.info("User login successful", {
+      requestId: req.requestId,
       userId: user.id,
       login: user.login,
       email: user.email,
@@ -409,6 +458,7 @@ router.post("/login", async (req, res, next) => {
     });
 
     return res.json({
+      success: true,
       token,
       user: {
         id: user.id,
@@ -420,10 +470,14 @@ router.post("/login", async (req, res, next) => {
       },
     });
   } catch (error) {
-    log.error("User login failed with exception", {
-      loginInput: req.body?.login,
-      errorMessage: error.message,
-    });
+    if (!(error instanceof AppError)) {
+      log.error("User login failed with exception", {
+        requestId: req.requestId,
+        loginInput: req.body?.login,
+        errorMessage: error.message,
+      });
+    }
+
     return next(error);
   }
 });
@@ -476,6 +530,8 @@ router.post("/login", async (req, res, next) => {
  * проходження middleware `authMiddleware`, який перевіряє JWT
  * та записує декодовані дані користувача у `req.user`.
  *
+ * Додатково логуються дані про запит користувача до профілю.
+ *
  * @param {Object} req - HTTP-запит Express.
  * @param {Object} req.user - Дані авторизованого користувача з JWT payload.
  * @param {Object} res - HTTP-відповідь Express.
@@ -483,12 +539,16 @@ router.post("/login", async (req, res, next) => {
  */
 router.get("/me", authMiddleware, (req, res) => {
   log.info("Current user profile requested", {
+    requestId: req.requestId,
     userId: req.user?.id,
     login: req.user?.login,
     role: req.user?.role,
   });
 
-  return res.json({ user: req.user });
+  return res.json({
+    success: true,
+    user: req.user,
+  });
 });
 
 module.exports = router;
