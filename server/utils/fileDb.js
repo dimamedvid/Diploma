@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { createModuleLogger } = require("./logger");
 
 /**
  * Шлях до JSON-файлу, у якому зберігаються дані користувачів.
@@ -10,6 +11,7 @@ const path = require("path");
  * @constant {string}
  */
 const usersPath = path.join(__dirname, "..", "data", "users.json");
+const log = createModuleLogger("fileDb");
 
 /**
  * Зчитує список користувачів із локального JSON-файлу.
@@ -26,8 +28,21 @@ const usersPath = path.join(__dirname, "..", "data", "users.json");
  * @throws {Error} Якщо файл не існує або містить некоректний JSON.
  */
 function readUsers() {
-  const raw = fs.readFileSync(usersPath, "utf-8");
-  return JSON.parse(raw || "[]");
+  try {
+    log.debug("Reading users from file", { filePath: usersPath });
+
+    const raw = fs.readFileSync(usersPath, "utf-8");
+    const users = JSON.parse(raw || "[]");
+
+    log.info("Users loaded successfully", { count: users.length });
+    return users;
+  } catch (error) {
+    log.error("Failed to read users file", {
+      filePath: usersPath,
+      errorMessage: error.message,
+    });
+    throw error;
+  }
 }
 
 /**
@@ -44,7 +59,22 @@ function readUsers() {
  * @throws {Error} Якщо під час запису у файл сталася помилка.
  */
 function writeUsers(users) {
-  fs.writeFileSync(usersPath, JSON.stringify(users, null, 2), "utf-8");
+  try {
+    log.debug("Writing users to file", {
+      filePath: usersPath,
+      count: users.length,
+    });
+
+    fs.writeFileSync(usersPath, JSON.stringify(users, null, 2), "utf-8");
+
+    log.info("Users saved successfully", { count: users.length });
+  } catch (error) {
+    log.error("Failed to write users file", {
+      filePath: usersPath,
+      errorMessage: error.message,
+    });
+    throw error;
+  }
 }
 
 module.exports = { readUsers, writeUsers };

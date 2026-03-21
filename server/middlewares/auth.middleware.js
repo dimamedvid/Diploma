@@ -1,4 +1,7 @@
 const { verifyToken } = require("../utils/jwt");
+const { createModuleLogger } = require("../utils/logger");
+
+const log = createModuleLogger("auth.middleware");
 
 /**
  * Middleware авторизації для захищених маршрутів API.
@@ -33,14 +36,35 @@ function authMiddleware(req, res, next) {
   const [type, token] = header.split(" ");
 
   if (type !== "Bearer" || !token) {
+    log.warning("Authorization failed: no token provided", {
+      method: req.method,
+      url: req.originalUrl,
+      ip: req.ip,
+    });
+
     return res.status(401).json({ message: "No token" });
   }
 
   try {
     const payload = verifyToken(token);
     req.user = payload;
-    next();
-  } catch (e) {
+
+    log.debug("Token verified successfully", {
+      method: req.method,
+      url: req.originalUrl,
+      userId: payload.id,
+      role: payload.role,
+    });
+
+    return next();
+  } catch (error) {
+    log.warning("Authorization failed: invalid token", {
+      method: req.method,
+      url: req.originalUrl,
+      ip: req.ip,
+      errorMessage: error.message,
+    });
+
     return res.status(401).json({ message: "Invalid token" });
   }
 }

@@ -4,6 +4,9 @@ const swaggerUi = require("swagger-ui-express");
 
 const authRoutes = require("./routes/auth.routes");
 const swaggerSpec = require("./docs/swagger");
+const requestLogger = require("./middlewares/requestLogger");
+const errorHandler = require("./middlewares/errorHandler");
+const { createModuleLogger } = require("./utils/logger");
 
 /**
  * Основний Express-застосунок серверної частини.
@@ -16,6 +19,7 @@ const swaggerSpec = require("./docs/swagger");
  * - health-check endpoint для перевірки доступності сервера.
  */
 const app = express();
+const log = createModuleLogger("server");
 
 /**
  * Middleware для налаштування CORS.
@@ -31,6 +35,11 @@ app.use(cors({ origin: "http://localhost:3000", credentials: false }));
  * Дозволяє працювати з `req.body` як зі звичайним JavaScript-об'єктом.
  */
 app.use(express.json());
+
+/**
+ * Базове логування вхідних HTTP-запитів.
+ */
+app.use(requestLogger);
 
 /**
  * Підключення маршрутів авторизації.
@@ -89,7 +98,15 @@ app.get("/api/docs.json", (req, res) => res.json(swaggerSpec));
  * @param {object} res - HTTP-відповідь Express.
  * @returns {object} JSON-об'єкт зі статусом доступності сервера.
  */
-app.get("/api/health", (req, res) => res.json({ ok: true }));
+app.get("/api/health", (req, res) => {
+  log.debug("Health-check requested");
+  return res.json({ ok: true });
+});
+
+/**
+ * Централізована обробка помилок Express.
+ */
+app.use(errorHandler);
 
 /**
  * Запускає HTTP-сервер, якщо файл виконано напряму.
@@ -99,7 +116,40 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
  */
 if (require.main === module) {
   const PORT = 4000;
-  app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
+
+  const server = app.listen(PORT, () => {
+    log.info("Server started successfully", {
+      port: PORT,
+      env: process.env.NODE_ENV || "development",
+    });
+  });
+
+  const gracefulShutdown = (signal) => {
+    log.info("Shutdown signal received", { signal });
+
+    server.close(() => {
+      log.info("Server stopped gracefully");
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+
+  process.on("uncaughtException", (error) => {
+    log.critical("Uncaught exception", {
+      errorMessage: error.message,
+      stack: error.stack,
+    });
+    process.exit(1);
+  });
+
+  process.on("unhandledRejection", (reason) => {
+    log.critical("Unhandled promise rejection", {
+      reason: reason instanceof Error ? reason.message : String(reason),
+    });
+    process.exit(1);
+  });
 }
 
 /**
