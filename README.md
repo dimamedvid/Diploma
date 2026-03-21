@@ -423,6 +423,17 @@ npm start
 
 ---
 
+## Скрипти автоматизації
+
+У проєкті реалізовано скрипти для автоматизації типових операцій:
+
+- `scripts/start-dev.sh` , запуск frontend і backend у dev-середовищі для Linux / macOS
+- `scripts/start-dev.bat` , запуск frontend і backend у dev-середовищі для Windows
+- `scripts/deploy-prod.sh` , автоматизація production-оновлення на сервері
+- `scripts/restart-prod.sh` , швидкий перезапуск production-сервісів
+
+---
+
 ## Тестування
 
 У проєкті використовуються різні види тестів.
