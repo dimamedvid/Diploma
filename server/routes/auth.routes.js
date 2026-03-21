@@ -188,18 +188,28 @@ router.post("/register", async (req, res, next) => {
     });
 
     if (!login || !firstName || !lastName || !email || !password) {
-      throw new AppError("Будь ласка, заповніть усі обов’язкові поля.", 400, {
-        field: "common",
-        reason: "MISSING_REQUIRED_FIELDS",
-      });
+      throw new AppError(
+        "Будь ласка, заповніть усі обов’язкові поля.",
+        400,
+        {
+          field: "common",
+          reason: "MISSING_REQUIRED_FIELDS",
+        },
+        "auth.requiredFields",
+      );
     }
 
     if (!isLoginValid(login)) {
-      throw new AppError("Логін має містити 4–25 символів, лише латинські літери та цифри.", 400, {
-        field: "login",
-        value: login,
-        reason: "INVALID_LOGIN_FORMAT",
-      });
+      throw new AppError(
+        "Логін має містити 4–25 символів, лише латинські літери та цифри.",
+        400,
+        {
+          field: "login",
+          value: login,
+          reason: "INVALID_LOGIN_FORMAT",
+        },
+        "auth.invalidLogin",
+      );
     }
 
     if (firstName.length < 1 || firstName.length > 50) {
@@ -217,11 +227,16 @@ router.post("/register", async (req, res, next) => {
     }
 
     if (!isEmailValid(email)) {
-      throw new AppError("Email має бути у форматі name@mail.com.", 400, {
-        field: "email",
-        value: email,
-        reason: "INVALID_EMAIL_FORMAT",
-      });
+      throw new AppError(
+        "Email має бути у форматі name@mail.com.",
+        400,
+        {
+          field: "email",
+          value: email,
+          reason: "INVALID_EMAIL_FORMAT",
+        },
+        "auth.invalidEmail",
+      );
     }
 
     if (!isPasswordValid(password)) {
@@ -232,6 +247,7 @@ router.post("/register", async (req, res, next) => {
           field: "password",
           reason: "INVALID_PASSWORD_FORMAT",
         },
+        "auth.invalidPasswordFormat",
       );
     }
 
@@ -241,20 +257,30 @@ router.post("/register", async (req, res, next) => {
       (u) => String(u.login || "").trim().toLowerCase() === login.toLowerCase(),
     );
     if (loginExists) {
-      throw new AppError("Такий логін уже зайнятий.", 409, {
-        field: "login",
-        value: login,
-        reason: "LOGIN_ALREADY_EXISTS",
-      });
+      throw new AppError(
+        "Такий логін уже зайнятий.",
+        409,
+        {
+          field: "login",
+          value: login,
+          reason: "LOGIN_ALREADY_EXISTS",
+        },
+        "auth.loginExists",
+      );
     }
 
     const emailExists = users.some((u) => normalizeEmail(u.email) === email);
     if (emailExists) {
-      throw new AppError("Такий email уже зареєстрований.", 409, {
-        field: "email",
-        value: email,
-        reason: "EMAIL_ALREADY_EXISTS",
-      });
+      throw new AppError(
+        "Такий email уже зареєстрований.",
+        409,
+        {
+          field: "email",
+          value: email,
+          reason: "EMAIL_ALREADY_EXISTS",
+        },
+        "auth.emailExists",
+      );
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -427,19 +453,29 @@ router.post("/login", async (req, res, next) => {
     }
 
     if (!user) {
-      throw new AppError("Користувача з такими даними не знайдено або пароль неправильний.", 401, {
-        field: "login",
-        value: loginInput,
-        reason: "USER_NOT_FOUND",
-      });
+      throw new AppError(
+        "Користувача з такими даними не знайдено або пароль неправильний.",
+        401,
+        {
+          field: "login",
+          value: loginInput,
+          reason: "USER_NOT_FOUND",
+        },
+        "auth.invalidCredentials",
+      );
     }
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
-      throw new AppError("Користувача з такими даними не знайдено або пароль неправильний.", 401, {
-        field: "password",
-        reason: "INVALID_PASSWORD",
-      });
+      throw new AppError(
+        "Користувача з такими даними не знайдено або пароль неправильний.",
+        401,
+        {
+          field: "password",
+          reason: "INVALID_PASSWORD",
+        },
+        "auth.invalidCredentials",
+      );
     }
 
     const token = signToken({

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser, clearAuthError } from "../../store/authSlice";
+import UserErrorMessage from "../../components/UserErrorMessage/UserErrorMessage";
 import "./LoginPage.css";
 
 /**
@@ -18,7 +19,7 @@ import "./LoginPage.css";
  * Стан компонента включає:
  * - локальний стан форми входу;
  * - глобальний стан авторизації з Redux store;
- * - статус виконання запиту та текст помилки.
+ * - статус виконання запиту та текст/об’єкт помилки.
  *
  * @returns {JSX.Element} Сторінка входу з формою авторизації.
  */
@@ -35,6 +36,25 @@ export default function LoginPage() {
   const [form, setForm] = useState({ login: "", password: "" });
 
   /**
+   * Нормалізує серверну помилку до формату,
+   * який очікує компонент `UserErrorMessage`.
+   *
+   * Якщо в Redux store зберігається лише рядок,
+   * він також буде коректно відображений.
+   */
+  const normalizedError =
+    typeof error === "string"
+      ? {
+        success: false,
+        message: error,
+        messageKey: "",
+        errorId: null,
+        requestId: null,
+        details: {},
+      }
+      : error;
+
+  /**
    * Обробляє зміну значень полів форми.
    *
    * Під час кожного введення:
@@ -47,7 +67,7 @@ export default function LoginPage() {
   const onChange = (e) => {
     dispatch(clearAuthError());
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    setForm((prevForm) => ({ ...prevForm, [name]: value }));
   };
 
   /**
@@ -63,8 +83,10 @@ export default function LoginPage() {
    */
   const onSubmit = async (e) => {
     e.preventDefault();
-    const res = await dispatch(loginUser(form));
-    if (res.type.endsWith("fulfilled")) {
+
+    const result = await dispatch(loginUser(form));
+
+    if (result.type.endsWith("fulfilled")) {
       navigate("/");
     }
   };
@@ -98,7 +120,7 @@ export default function LoginPage() {
             />
           </label>
 
-          {error && <p className="auth__error">{error}</p>}
+          <UserErrorMessage error={normalizedError} />
 
           <button className="auth__button" type="submit" disabled={status === "loading"}>
             {status === "loading" ? "Входжу..." : "Увійти"}

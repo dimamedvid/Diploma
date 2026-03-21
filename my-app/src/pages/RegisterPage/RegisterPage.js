@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser, clearAuthError } from "../../store/authSlice";
+import UserErrorMessage from "../../components/UserErrorMessage/UserErrorMessage";
 import "./RegisterPage.css";
 
 /**
@@ -48,6 +49,39 @@ export default function RegisterPage() {
   const [localError, setLocalError] = useState("");
 
   /**
+   * Нормалізує серверну помилку до формату,
+   * який очікує компонент `UserErrorMessage`.
+   */
+  const normalizedServerError =
+    typeof error === "string"
+      ? {
+        success: false,
+        message: error,
+        messageKey: "",
+        errorId: null,
+        requestId: null,
+        details: {},
+      }
+      : error;
+
+  /**
+   * Нормалізує локальну клієнтську помилку валідації.
+   *
+   * Так ми можемо показувати її тим самим компонентом,
+   * що й серверні помилки.
+   */
+  const normalizedLocalError = localError
+    ? {
+      success: false,
+      message: localError,
+      messageKey: "",
+      errorId: null,
+      requestId: null,
+      details: {},
+    }
+    : null;
+
+  /**
    * Обробляє зміну значень полів форми.
    *
    * Під час кожного введення:
@@ -61,8 +95,9 @@ export default function RegisterPage() {
   const onChange = (e) => {
     dispatch(clearAuthError());
     setLocalError("");
+
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    setForm((prevForm) => ({ ...prevForm, [name]: value }));
   };
 
   /**
@@ -135,13 +170,13 @@ export default function RegisterPage() {
   const onSubmit = async (e) => {
     e.preventDefault();
 
-    const msg = validate();
-    if (msg) {
-      setLocalError(msg);
+    const validationMessage = validate();
+    if (validationMessage) {
+      setLocalError(validationMessage);
       return;
     }
 
-    const res = await dispatch(
+    const result = await dispatch(
       registerUser({
         login: form.login,
         firstName: form.firstName,
@@ -151,7 +186,7 @@ export default function RegisterPage() {
       }),
     );
 
-    if (res.type.endsWith("fulfilled")) {
+    if (result.type.endsWith("fulfilled")) {
       navigate("/");
     }
   };
@@ -231,8 +266,7 @@ export default function RegisterPage() {
             />
           </label>
 
-          {localError && <p className="auth__error">{localError}</p>}
-          {error && <p className="auth__error">{error}</p>}
+          <UserErrorMessage error={normalizedLocalError || normalizedServerError} />
 
           <button className="auth__button" type="submit" disabled={status === "loading"}>
             {status === "loading" ? "Реєструю..." : "Зареєструватися"}

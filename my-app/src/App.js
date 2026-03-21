@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import HomePage from "./pages/HomePage/HomePage";
 import LoginPage from "./pages/LoginPage/LoginPage";
@@ -8,6 +8,7 @@ import Header from "./components/Header/Header";
 import AdminPage from "./pages/AdminPage/AdminPage";
 import Footer from "./components/Footer/Footer";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
 import "./App.css";
 
 /**
@@ -27,7 +28,7 @@ import "./App.css";
  * - `/login` — сторінка входу;
  * - `/register` — сторінка реєстрації;
  * - `/cabinet` — особистий кабінет користувача, доступний лише після авторизації;
- * - `*` — усі невідомі маршрути перенаправляються на головну сторінку.
+ * - `*` — сторінка 404 для невідомих маршрутів.
  *
  * Для захисту приватного маршруту `/cabinet` використовується компонент
  * `ProtectedRoute`, який перевіряє, чи користувач авторизований.
@@ -39,7 +40,7 @@ export default function App() {
     <div className="layout">
       <Header />
       <main className="layout__content">
-        <div className=" container">
+        <div className="container">
           <Routes>
             <Route path="/" element={<HomePage />} />
 
@@ -57,7 +58,7 @@ export default function App() {
               }
             />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </div>
       </main>

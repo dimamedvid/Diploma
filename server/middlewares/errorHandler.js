@@ -50,6 +50,7 @@ function errorHandler(err, req, res, next) {
 
   const statusCode = err.statusCode || 500;
   const errorId = err.errorId || crypto.randomUUID();
+  const messageKey = err.messageKey || "common.internal";
 
   const context = {
     errorId,
@@ -65,6 +66,7 @@ function errorHandler(err, req, res, next) {
     query: req.query,
     body: sanitizeBody(req.body),
     details: err.details || {},
+    messageKey,
     errorMessage: err.message,
   };
 
@@ -79,6 +81,7 @@ function errorHandler(err, req, res, next) {
     success: false,
     errorId,
     requestId: req.requestId,
+    messageKey,
     message:
       statusCode >= 500
         ? "Внутрішня помилка сервера. Спробуйте пізніше або зверніться до підтримки."

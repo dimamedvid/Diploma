@@ -5,6 +5,7 @@ const crypto = require("crypto");
  *
  * Дозволяє створювати помилки з:
  * - інформативним повідомленням;
+ * - ключем локалізації;
  * - HTTP-статусом;
  * - унікальним ідентифікатором помилки;
  * - додатковим контекстом.
@@ -16,13 +17,15 @@ class AppError extends Error {
    * @param {string} message - Зрозуміле повідомлення про помилку.
    * @param {number} [statusCode] - HTTP-статус помилки.
    * @param {Object} [details] - Додаткові деталі або контекст помилки.
+   * @param {string} [messageKey] - Ключ локалізації повідомлення.
    */
-  constructor(message, statusCode = 500, details = {}) {
+  constructor(message, statusCode = 500, details = {}, messageKey = "common.internal") {
     super(message);
 
     this.name = "AppError";
     this.statusCode = statusCode;
     this.details = details;
+    this.messageKey = messageKey;
     this.errorId = crypto.randomUUID();
     this.isOperational = statusCode < 500;
 

@@ -1,2 +1,9 @@
 2026-03-21 19:54:03 [INFO] [server] API running on http://localhost:4000 {"env":"development"}
 2026-03-21 19:58:19 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}
+2026-03-21 20:48:31 [INFO] [server] API running on http://localhost:4000 {"env":"development"}
+2026-03-21 20:48:48 [INFO] [request] HTTP request started {"requestId":"a40f56dd-7c11-41dc-85e3-6aea93880aeb","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-03-21 20:48:48 [INFO] [auth.routes] User login attempt {"requestId":"a40f56dd-7c11-41dc-85e3-6aea93880aeb","loginInput":"dsadas"}
+2026-03-21 20:48:48 [INFO] [fileDb] Users loaded successfully {"count":2}
+2026-03-21 20:48:48 [WARNING] [errorHandler] Handled application error {"errorId":"53964fa5-7ad3-4ef4-99b2-8293fce92983","requestId":"a40f56dd-7c11-41dc-85e3-6aea93880aeb","method":"POST","url":"/api/auth/login","ip":"::1","userId":null,"role":null,"sessionType":"anonymous","authType":"none","params":{},"query":{},"body":{"login":"dsadas","password":"[REDACTED]"},"details":{"field":"login","value":"dsadas","reason":"USER_NOT_FOUND"},"messageKey":"auth.invalidCredentials","errorMessage":"Користувача з такими даними не знайдено або пароль неправильний."}
+2026-03-21 20:48:48 [WARNING] [request] HTTP request finished with client error {"requestId":"a40f56dd-7c11-41dc-85e3-6aea93880aeb","method":"POST","url":"/api/auth/login","statusCode":401,"durationMs":3,"sessionType":"anonymous","userId":null,"role":null}
+2026-03-21 20:51:12 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}

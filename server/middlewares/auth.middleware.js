@@ -51,9 +51,12 @@ function authMiddleware(req, res, next) {
     });
 
     return next(
-      new AppError("Для доступу до цього ресурсу потрібно увійти в систему.", 401, {
-        reason: "NO_TOKEN",
-      }),
+      new AppError(
+        "Для доступу до цього ресурсу потрібно увійти в систему.",
+        401,
+        { reason: "NO_TOKEN" },
+        "auth.noToken",
+      ),
     );
   }
 
@@ -92,9 +95,12 @@ function authMiddleware(req, res, next) {
     });
 
     return next(
-      new AppError("Сесія недійсна або завершилась. Увійдіть у систему повторно.", 401, {
-        reason: "INVALID_TOKEN",
-      }),
+      new AppError(
+        "Сесія недійсна або завершилась. Увійдіть у систему повторно.",
+        401,
+        { reason: "INVALID_TOKEN" },
+        "auth.invalidToken",
+      ),
     );
   }
 }

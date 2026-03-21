@@ -1,0 +1,70 @@
+.error-boundary {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: #f7f7f7;
+}
+
+.error-boundary__card {
+  width: 100%;
+  max-width: 560px;
+  padding: 24px;
+  border-radius: 16px;
+  background-color: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.error-boundary__title {
+  margin: 0 0 12px;
+  font-size: 32px;
+  line-height: 1.2;
+}
+
+.error-boundary__text {
+  margin: 0 0 8px;
+  color: #222;
+}
+
+.error-boundary__help {
+  margin: 0 0 12px;
+  color: #555;
+}
+
+.error-boundary__meta {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: #444;
+  word-break: break-word;
+}
+
+.error-boundary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.error-boundary__button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background-color: #0a58ca;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.error-boundary__button:hover {
+  background-color: #084298;
+}
+
+.error-boundary__link {
+  display: inline-flex;
+  align-items: center;
+  color: #0a58ca;
+  text-decoration: none;
+}
+
+.error-boundary__link:hover {
+  text-decoration: underline;
+}
