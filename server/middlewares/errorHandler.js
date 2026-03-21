@@ -32,7 +32,7 @@ function sanitizeBody(body = {}) {
  * Логує необроблені помилки застосунку, додає:
  * - унікальний `errorId`;
  * - `requestId`;
- * - контекст запиту;
+ * - контекст користувача, сесії та запиту;
  * - технічну інформацію для діагностики.
  *
  * Для клієнта повертає уніфіковану JSON-відповідь.
@@ -58,15 +58,18 @@ function errorHandler(err, req, res, next) {
     url: req.originalUrl,
     ip: req.ip,
     userId: req.user?.id || null,
+    role: req.user?.role || null,
+    sessionType: req.authContext?.sessionType || "anonymous",
+    authType: req.authContext?.authType || "none",
     params: req.params,
     query: req.query,
     body: sanitizeBody(req.body),
     details: err.details || {},
     errorMessage: err.message,
-    stack: err.stack,
   };
 
   if (statusCode >= 500) {
+    context.stack = err.stack;
     log.error("Unhandled application error", context);
   } else {
     log.warning("Handled application error", context);

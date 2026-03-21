@@ -10,7 +10,7 @@ const log = createModuleLogger("request");
  * - завершення відповіді;
  * - статус-код;
  * - тривалість виконання;
- * - унікальний `requestId`.
+ * - контекст користувача, сесії та запиту.
  *
  * @param {Object} req - HTTP-запит Express.
  * @param {Object} res - HTTP-відповідь Express.
@@ -25,6 +25,9 @@ function requestLogger(req, res, next) {
     method: req.method,
     url: req.originalUrl,
     ip: req.ip,
+    sessionType: req.authContext?.sessionType || "anonymous",
+    userId: req.user?.id || null,
+    role: req.user?.role || null,
   });
 
   res.on("finish", () => {
@@ -36,7 +39,9 @@ function requestLogger(req, res, next) {
       url: req.originalUrl,
       statusCode: res.statusCode,
       durationMs,
+      sessionType: req.authContext?.sessionType || "anonymous",
       userId: req.user?.id || null,
+      role: req.user?.role || null,
     };
 
     if (res.statusCode >= 500) {

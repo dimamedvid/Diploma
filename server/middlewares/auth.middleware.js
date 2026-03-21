@@ -24,7 +24,8 @@ const log = createModuleLogger("auth.middleware");
  * 2. Перевіряє, чи має він формат `Bearer <token>`.
  * 3. Викликає `verifyToken()` для декодування і перевірки токена.
  * 4. Якщо токен валідний, записує payload у `req.user`.
- * 5. Якщо токен відсутній або недійсний, передає контрольовану помилку далі.
+ * 5. Додає auth/session context у `req.authContext`.
+ * 6. Якщо токен відсутній або недійсний, передає контрольовану помилку далі.
  *
  * @param {Object} req - HTTP-запит Express.
  * @param {Object} req.headers - Заголовки запиту.
@@ -37,6 +38,11 @@ function authMiddleware(req, res, next) {
   const [type, token] = header.split(" ");
 
   if (type !== "Bearer" || !token) {
+    req.authContext = {
+      sessionType: "anonymous",
+      authType: "none",
+    };
+
     log.warning("Authorization failed: no token provided", {
       requestId: req.requestId,
       method: req.method,
@@ -54,6 +60,12 @@ function authMiddleware(req, res, next) {
   try {
     const payload = verifyToken(token);
     req.user = payload;
+    req.authContext = {
+      sessionType: "jwt",
+      authType: "bearer",
+      userId: payload.id,
+      role: payload.role,
+    };
 
     log.debug("Token verified successfully", {
       requestId: req.requestId,
@@ -61,10 +73,16 @@ function authMiddleware(req, res, next) {
       url: req.originalUrl,
       userId: payload.id,
       role: payload.role,
+      sessionType: "jwt",
     });
 
     return next();
   } catch (error) {
+    req.authContext = {
+      sessionType: "invalid-jwt",
+      authType: "bearer",
+    };
+
     log.warning("Authorization failed: invalid token", {
       requestId: req.requestId,
       method: req.method,
