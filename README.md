@@ -414,6 +414,31 @@ npm start
 
 ---
 
+## Налаштування рівня логування
+
+Мінімальний рівень логування задається через змінну оточення `LOG_LEVEL`.
+
+Приклади:
+
+### PowerShell
+```powershell
+$env:LOG_LEVEL="debug"
+npm run dev
+```
+
+### CMD
+```cmd
+set LOG_LEVEL=warning
+npm run dev
+```
+
+### Linux / macOS
+```bash
+LOG_LEVEL=error npm run dev
+```
+
+---
+
 ## Документація
 
 Додаткова документація проєкту знаходиться в теці `docs`:
