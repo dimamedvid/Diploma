@@ -420,6 +420,7 @@ npm start
 
 - `docs/deployment.md` , інструкція з production-розгортання
 - `docs/update.md` , інструкція з оновлення проєкту
+- `docs/backup.md` , інструкція з резервного копіювання та відновлення
 
 ---
 
