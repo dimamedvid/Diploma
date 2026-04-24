@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "D:\\Диплом\\code\\server\\logs\\.be3ff845416347d48fdaaffc11e64e2d9474db2b-audit.json",
+    "files": [
+        {
+            "date": 1777044702677,
+            "name": "D:\\Диплом\\code\\server\\logs\\application-2026-04-24.log",
+            "hash": "2c7792fb085f2aac1dbb09f3568108d50ddfaff3ba61b97431521015892e3af3"
+        }
+    ],
+    "hashType": "sha256"
+}

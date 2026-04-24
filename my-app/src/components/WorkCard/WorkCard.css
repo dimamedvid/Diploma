@@ -25,6 +25,7 @@
   padding: 20px 10px;
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .work-card__title {
@@ -38,6 +39,12 @@
   font-size: 16px;
   color: #fff;
   margin-bottom: 6px;
+}
+
+.work-card__genre {
+  font-size: 13px;
+  color: #aaa;
+  margin-bottom: 8px;
 }
 
 .work-card__rating {
@@ -75,6 +82,9 @@
   cursor: pointer;
   font-size: 16px;
   padding: 10px;
+  display: grid;
+  place-items: center;
+  text-decoration: none;
 }
 
 .work-card__button:hover {

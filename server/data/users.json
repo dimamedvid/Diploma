@@ -18,5 +18,15 @@
     "passwordHash": "$2a$10$2ScWZa0yQe8ixwKCRTdS1uzPRWb6PhDkNZgAAjJQbuzfLoSuCwBPm",
     "role": "user",
     "createdAt": "2026-03-20T19:51:24.734Z"
+  },
+  {
+    "id": "1777048889897",
+    "login": "TEO29",
+    "firstName": "Єгор",
+    "lastName": "Юрченко",
+    "email": "dsadasdjhak@gmail.com",
+    "passwordHash": "$2a$10$bNeY8WUZJaNQYHnks80C3.9dCPGrug8NYHmxntlDqAF/rDT5MuuYe",
+    "role": "user",
+    "createdAt": "2026-04-24T16:41:29.897Z"
   }
 ]

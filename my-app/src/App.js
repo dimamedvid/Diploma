@@ -4,6 +4,7 @@ import HomePage from "./pages/HomePage/HomePage";
 import LoginPage from "./pages/LoginPage/LoginPage";
 import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import CabinetPage from "./pages/CabinetPage/CabinetPage";
+import WorkDetailsPage from "./pages/WorkDetailsPage/WorkDetailsPage";
 import Header from "./components/Header/Header";
 import AdminPage from "./pages/AdminPage/AdminPage";
 import Footer from "./components/Footer/Footer";
@@ -43,6 +44,7 @@ export default function App() {
         <div className="container">
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/works/:id" element={<WorkDetailsPage />} />
 
             <Route path="/admin" element={<AdminPage />} />
 
