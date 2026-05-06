@@ -15,7 +15,7 @@
 
 .work-details__header {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 32px;
   margin-bottom: 40px;
   align-items: start;
@@ -36,18 +36,23 @@
   background: #181818;
   border-radius: 14px;
   padding: 28px;
+  min-width: 0;
 }
 
 .work-details__title {
   margin: 0 0 10px;
   font-size: 36px;
   color: #fff;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .work-details__author {
   margin: 0 0 18px;
   font-size: 20px;
   color: #ddd;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .work-details__meta {
@@ -70,6 +75,8 @@
   font-size: 16px;
   line-height: 1.6;
   color: #ccc;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .work-details__favorite {
@@ -98,6 +105,7 @@
   padding: 32px;
   max-width: 850px;
   margin: 0 auto 40px;
+  overflow: hidden;
 }
 
 .reader__top {
@@ -122,12 +130,16 @@
   min-height: 420px;
   font-size: 19px;
   line-height: 1.75;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .reader__page p {
   margin: 0 0 18px;
   text-align: justify;
   text-indent: 28px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .reader__controls {
@@ -270,6 +282,8 @@
   margin: 0 0 12px;
   color: #ddd;
   line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .comments__date {

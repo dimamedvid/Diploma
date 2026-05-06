@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage/LoginPage";
 import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import CabinetPage from "./pages/CabinetPage/CabinetPage";
 import WorkDetailsPage from "./pages/WorkDetailsPage/WorkDetailsPage";
+import CreateWorkPage from "./pages/CreateWorkPage/CreateWorkPage";
 import Header from "./components/Header/Header";
 import AdminPage from "./pages/AdminPage/AdminPage";
 import Footer from "./components/Footer/Footer";
@@ -13,28 +14,12 @@ import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
 import "./App.css";
 
 /**
- * Кореневий компонент клієнтської частини застосунку.
+ * Головний компонент застосунку.
  *
- * Формує загальну структуру сторінки, яка включає:
- * - шапку сайту;
- * - основну область контенту;
- * - підвал сайту.
+ * Визначає маршрути сторінок, спільний layout,
+ * header, footer та захищені маршрути для авторизованих користувачів.
  *
- * Компонент також налаштовує маршрутизацію між сторінками застосунку
- * за допомогою `react-router-dom`.
- *
- * Доступні маршрути:
- * - `/` — головна сторінка з каталогом творів;
- * - `/admin` — сторінка адміністратора;
- * - `/login` — сторінка входу;
- * - `/register` — сторінка реєстрації;
- * - `/cabinet` — особистий кабінет користувача, доступний лише після авторизації;
- * - `*` — сторінка 404 для невідомих маршрутів.
- *
- * Для захисту приватного маршруту `/cabinet` використовується компонент
- * `ProtectedRoute`, який перевіряє, чи користувач авторизований.
- *
- * @returns {JSX.Element} Кореневий компонент із маршрутизацією та спільним layout.
+ * @returns {JSX.Element} Основна структура застосунку.
  */
 export default function App() {
   return (
@@ -45,6 +30,15 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/works/:id" element={<WorkDetailsPage />} />
+
+            <Route
+              path="/works/create"
+              element={
+                <ProtectedRoute>
+                  <CreateWorkPage />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="/admin" element={<AdminPage />} />
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { getAllPublishedWorks } from "../../utils/worksStorage";
 import worksData from "../../data/works.json";
 import "./WorkDetailsPage.css";
 
@@ -81,9 +82,13 @@ export default function WorkDetailsPage() {
   const [commentText, setCommentText] = useState("");
   const [commentRating, setCommentRating] = useState("5");
 
+  const allWorks = useMemo(() => {
+    return getAllPublishedWorks(worksData);
+  }, []);
+
   const work = useMemo(() => {
-    return worksData.find((item) => String(item.id) === String(id));
-  }, [id]);
+    return allWorks.find((item) => String(item.id) === String(id));
+  }, [allWorks, id]);
 
   if (!work) {
     return (

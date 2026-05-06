@@ -1,0 +1,82 @@
+2026-05-06 18:21:43 [INFO] [server] API running on http://localhost:4000 {"env":"development"}
+2026-05-06 18:49:43 [INFO] [request] HTTP request started {"requestId":"46387853-6f82-43a1-9059-3f220e28b06f","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 18:49:43 [INFO] [auth.routes] User login attempt {"requestId":"46387853-6f82-43a1-9059-3f220e28b06f","loginInput":"poto7"}
+2026-05-06 18:49:43 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 18:49:43 [INFO] [auth.routes] User login successful {"requestId":"46387853-6f82-43a1-9059-3f220e28b06f","userId":"1765592205256","login":"poto7","email":"dima.medvid.06@gmail.com","role":"moderator"}
+2026-05-06 18:49:43 [INFO] [request] HTTP request finished {"requestId":"46387853-6f82-43a1-9059-3f220e28b06f","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":68,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:17:15 [INFO] [request] HTTP request started {"requestId":"83248e71-c850-458f-a6e0-31d09fc5b8fe","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:17:15 [INFO] [auth.routes] User login attempt {"requestId":"83248e71-c850-458f-a6e0-31d09fc5b8fe","loginInput":"TEO29"}
+2026-05-06 20:17:15 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:17:15 [WARNING] [errorHandler] Handled application error {"errorId":"8b0dc8b6-c67f-440a-8d73-f16be4a5541b","requestId":"83248e71-c850-458f-a6e0-31d09fc5b8fe","method":"POST","url":"/api/auth/login","ip":"::1","userId":null,"role":null,"sessionType":"anonymous","authType":"none","params":{},"query":{},"body":{"login":"TEO29","password":"[REDACTED]"},"details":{"field":"password","reason":"INVALID_PASSWORD"},"messageKey":"auth.invalidCredentials","errorMessage":"Користувача з такими даними не знайдено або пароль неправильний."}
+2026-05-06 20:17:15 [WARNING] [request] HTTP request finished with client error {"requestId":"83248e71-c850-458f-a6e0-31d09fc5b8fe","method":"POST","url":"/api/auth/login","statusCode":401,"durationMs":61,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:17:53 [INFO] [request] HTTP request started {"requestId":"0952fe55-34eb-45b2-bf56-6580c2153fa0","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:17:53 [INFO] [auth.routes] User login attempt {"requestId":"0952fe55-34eb-45b2-bf56-6580c2153fa0","loginInput":"TEO29"}
+2026-05-06 20:17:53 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:17:53 [WARNING] [errorHandler] Handled application error {"errorId":"97e934e9-91d3-4945-93f3-ec9ecdd97591","requestId":"0952fe55-34eb-45b2-bf56-6580c2153fa0","method":"POST","url":"/api/auth/login","ip":"::1","userId":null,"role":null,"sessionType":"anonymous","authType":"none","params":{},"query":{},"body":{"login":"TEO29","password":"[REDACTED]"},"details":{"field":"password","reason":"INVALID_PASSWORD"},"messageKey":"auth.invalidCredentials","errorMessage":"Користувача з такими даними не знайдено або пароль неправильний."}
+2026-05-06 20:17:53 [WARNING] [request] HTTP request finished with client error {"requestId":"0952fe55-34eb-45b2-bf56-6580c2153fa0","method":"POST","url":"/api/auth/login","statusCode":401,"durationMs":54,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:18:14 [INFO] [request] HTTP request started {"requestId":"f871a211-d151-42aa-a6b7-671f2ce263fb","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:18:14 [INFO] [auth.routes] User login attempt {"requestId":"f871a211-d151-42aa-a6b7-671f2ce263fb","loginInput":"TEO29"}
+2026-05-06 20:18:14 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:18:14 [WARNING] [errorHandler] Handled application error {"errorId":"54188b8c-6b36-401f-a9f2-d98bafea1530","requestId":"f871a211-d151-42aa-a6b7-671f2ce263fb","method":"POST","url":"/api/auth/login","ip":"::1","userId":null,"role":null,"sessionType":"anonymous","authType":"none","params":{},"query":{},"body":{"login":"TEO29","password":"[REDACTED]"},"details":{"field":"password","reason":"INVALID_PASSWORD"},"messageKey":"auth.invalidCredentials","errorMessage":"Користувача з такими даними не знайдено або пароль неправильний."}
+2026-05-06 20:18:14 [WARNING] [request] HTTP request finished with client error {"requestId":"f871a211-d151-42aa-a6b7-671f2ce263fb","method":"POST","url":"/api/auth/login","statusCode":401,"durationMs":56,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:18:17 [INFO] [request] HTTP request started {"requestId":"97f398f8-fea8-458e-81e0-4af9cac39c1e","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:18:17 [INFO] [auth.routes] User login attempt {"requestId":"97f398f8-fea8-458e-81e0-4af9cac39c1e","loginInput":"TEO29"}
+2026-05-06 20:18:17 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:18:17 [WARNING] [errorHandler] Handled application error {"errorId":"d5863617-7ae6-46f4-93c9-ddb698d3251b","requestId":"97f398f8-fea8-458e-81e0-4af9cac39c1e","method":"POST","url":"/api/auth/login","ip":"::1","userId":null,"role":null,"sessionType":"anonymous","authType":"none","params":{},"query":{},"body":{"login":"TEO29","password":"[REDACTED]"},"details":{"field":"password","reason":"INVALID_PASSWORD"},"messageKey":"auth.invalidCredentials","errorMessage":"Користувача з такими даними не знайдено або пароль неправильний."}
+2026-05-06 20:18:17 [WARNING] [request] HTTP request finished with client error {"requestId":"97f398f8-fea8-458e-81e0-4af9cac39c1e","method":"POST","url":"/api/auth/login","statusCode":401,"durationMs":58,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:19:01 [INFO] [request] HTTP request started {"requestId":"5e95a97d-fe6e-4407-a04f-5e96847f0a6b","method":"POST","url":"/api/auth/register","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:19:01 [INFO] [auth.routes] User registration attempt {"requestId":"5e95a97d-fe6e-4407-a04f-5e96847f0a6b","login":"TEO29","email":"dsadasdjhak@gmail.com"}
+2026-05-06 20:19:01 [INFO] [fileDb] Users loaded successfully {"count":2}
+2026-05-06 20:19:01 [INFO] [fileDb] Users saved successfully {"count":3}
+2026-05-06 20:19:01 [INFO] [auth.routes] User registered successfully {"requestId":"5e95a97d-fe6e-4407-a04f-5e96847f0a6b","userId":"1778087941565","login":"TEO29","email":"dsadasdjhak@gmail.com","role":"user"}
+2026-05-06 20:19:01 [INFO] [request] HTTP request finished {"requestId":"5e95a97d-fe6e-4407-a04f-5e96847f0a6b","method":"POST","url":"/api/auth/register","statusCode":200,"durationMs":62,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:20:06 [INFO] [request] HTTP request started {"requestId":"14151645-b6f3-4789-b103-d1edecfb7696","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:20:06 [INFO] [auth.routes] User login attempt {"requestId":"14151645-b6f3-4789-b103-d1edecfb7696","loginInput":"poto7"}
+2026-05-06 20:20:06 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:20:06 [WARNING] [errorHandler] Handled application error {"errorId":"8ddc3434-acd2-4590-ac91-f6cc30260403","requestId":"14151645-b6f3-4789-b103-d1edecfb7696","method":"POST","url":"/api/auth/login","ip":"::1","userId":null,"role":null,"sessionType":"anonymous","authType":"none","params":{},"query":{},"body":{"login":"poto7","password":"[REDACTED]"},"details":{"field":"password","reason":"INVALID_PASSWORD"},"messageKey":"auth.invalidCredentials","errorMessage":"Користувача з такими даними не знайдено або пароль неправильний."}
+2026-05-06 20:20:06 [WARNING] [request] HTTP request finished with client error {"requestId":"14151645-b6f3-4789-b103-d1edecfb7696","method":"POST","url":"/api/auth/login","statusCode":401,"durationMs":58,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:20:12 [INFO] [request] HTTP request started {"requestId":"70f2ad57-03be-4e47-90ad-0c6901d9ad0a","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:20:12 [INFO] [auth.routes] User login attempt {"requestId":"70f2ad57-03be-4e47-90ad-0c6901d9ad0a","loginInput":"poto7"}
+2026-05-06 20:20:12 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:20:12 [INFO] [auth.routes] User login successful {"requestId":"70f2ad57-03be-4e47-90ad-0c6901d9ad0a","userId":"1765592205256","login":"poto7","email":"dima.medvid.06@gmail.com","role":"moderator"}
+2026-05-06 20:20:12 [INFO] [request] HTTP request finished {"requestId":"70f2ad57-03be-4e47-90ad-0c6901d9ad0a","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":54,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:23:40 [INFO] [request] HTTP request started {"requestId":"d4785501-e07c-4330-a213-ef0554369d98","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:23:40 [INFO] [auth.routes] User login attempt {"requestId":"d4785501-e07c-4330-a213-ef0554369d98","loginInput":"TEO29"}
+2026-05-06 20:23:40 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:23:40 [WARNING] [errorHandler] Handled application error {"errorId":"705ccdad-2b41-4292-a339-809e396ff43d","requestId":"d4785501-e07c-4330-a213-ef0554369d98","method":"POST","url":"/api/auth/login","ip":"::1","userId":null,"role":null,"sessionType":"anonymous","authType":"none","params":{},"query":{},"body":{"login":"TEO29","password":"[REDACTED]"},"details":{"field":"password","reason":"INVALID_PASSWORD"},"messageKey":"auth.invalidCredentials","errorMessage":"Користувача з такими даними не знайдено або пароль неправильний."}
+2026-05-06 20:23:40 [WARNING] [request] HTTP request finished with client error {"requestId":"d4785501-e07c-4330-a213-ef0554369d98","method":"POST","url":"/api/auth/login","statusCode":401,"durationMs":57,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:23:46 [INFO] [request] HTTP request started {"requestId":"0429f604-b5a0-429f-b7dc-ba2436e237f8","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:23:46 [INFO] [auth.routes] User login attempt {"requestId":"0429f604-b5a0-429f-b7dc-ba2436e237f8","loginInput":"TEO29"}
+2026-05-06 20:23:46 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:23:46 [INFO] [auth.routes] User login successful {"requestId":"0429f604-b5a0-429f-b7dc-ba2436e237f8","userId":"1778087941565","login":"TEO29","email":"dsadasdjhak@gmail.com","role":"user"}
+2026-05-06 20:23:46 [INFO] [request] HTTP request finished {"requestId":"0429f604-b5a0-429f-b7dc-ba2436e237f8","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":57,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:25:16 [INFO] [request] HTTP request started {"requestId":"8acfa957-a47c-4e76-8316-09c5ee79225f","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:25:16 [INFO] [auth.routes] User login attempt {"requestId":"8acfa957-a47c-4e76-8316-09c5ee79225f","loginInput":"poto7"}
+2026-05-06 20:25:16 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:25:16 [INFO] [auth.routes] User login successful {"requestId":"8acfa957-a47c-4e76-8316-09c5ee79225f","userId":"1765592205256","login":"poto7","email":"dima.medvid.06@gmail.com","role":"moderator"}
+2026-05-06 20:25:16 [INFO] [request] HTTP request finished {"requestId":"8acfa957-a47c-4e76-8316-09c5ee79225f","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":58,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:26:53 [INFO] [request] HTTP request started {"requestId":"a198fae8-031a-481d-96bd-65308898fdfb","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:26:53 [INFO] [auth.routes] User login attempt {"requestId":"a198fae8-031a-481d-96bd-65308898fdfb","loginInput":"TEO29"}
+2026-05-06 20:26:53 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:26:53 [INFO] [auth.routes] User login successful {"requestId":"a198fae8-031a-481d-96bd-65308898fdfb","userId":"1778087941565","login":"TEO29","email":"dsadasdjhak@gmail.com","role":"user"}
+2026-05-06 20:26:53 [INFO] [request] HTTP request finished {"requestId":"a198fae8-031a-481d-96bd-65308898fdfb","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":57,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:29:09 [INFO] [request] HTTP request started {"requestId":"7e5792d2-b7b8-4833-93cd-5403d39d9562","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:29:09 [INFO] [auth.routes] User login attempt {"requestId":"7e5792d2-b7b8-4833-93cd-5403d39d9562","loginInput":"poto7"}
+2026-05-06 20:29:09 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:29:09 [INFO] [auth.routes] User login successful {"requestId":"7e5792d2-b7b8-4833-93cd-5403d39d9562","userId":"1765592205256","login":"poto7","email":"dima.medvid.06@gmail.com","role":"moderator"}
+2026-05-06 20:29:09 [INFO] [request] HTTP request finished {"requestId":"7e5792d2-b7b8-4833-93cd-5403d39d9562","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":56,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:30:45 [INFO] [request] HTTP request started {"requestId":"ac246e53-9027-4793-8587-03370d984b6b","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:30:45 [INFO] [auth.routes] User login attempt {"requestId":"ac246e53-9027-4793-8587-03370d984b6b","loginInput":"TEO29"}
+2026-05-06 20:30:45 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:30:45 [INFO] [auth.routes] User login successful {"requestId":"ac246e53-9027-4793-8587-03370d984b6b","userId":"1778087941565","login":"TEO29","email":"dsadasdjhak@gmail.com","role":"user"}
+2026-05-06 20:30:45 [INFO] [request] HTTP request finished {"requestId":"ac246e53-9027-4793-8587-03370d984b6b","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":57,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:31:37 [INFO] [request] HTTP request started {"requestId":"60109d06-67b0-477c-83b0-5bbbf320b774","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:31:37 [INFO] [auth.routes] User login attempt {"requestId":"60109d06-67b0-477c-83b0-5bbbf320b774","loginInput":"TEO29"}
+2026-05-06 20:31:37 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:31:37 [INFO] [auth.routes] User login successful {"requestId":"60109d06-67b0-477c-83b0-5bbbf320b774","userId":"1778087941565","login":"TEO29","email":"dsadasdjhak@gmail.com","role":"user"}
+2026-05-06 20:31:37 [INFO] [request] HTTP request finished {"requestId":"60109d06-67b0-477c-83b0-5bbbf320b774","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":57,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:31:45 [INFO] [request] HTTP request started {"requestId":"551495d5-2468-412e-9138-0deddded933a","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-06 20:31:45 [INFO] [auth.routes] User login attempt {"requestId":"551495d5-2468-412e-9138-0deddded933a","loginInput":"poto7"}
+2026-05-06 20:31:45 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-06 20:31:45 [INFO] [auth.routes] User login successful {"requestId":"551495d5-2468-412e-9138-0deddded933a","userId":"1765592205256","login":"poto7","email":"dima.medvid.06@gmail.com","role":"moderator"}
+2026-05-06 20:31:45 [INFO] [request] HTTP request finished {"requestId":"551495d5-2468-412e-9138-0deddded933a","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":57,"sessionType":"anonymous","userId":null,"role":null}

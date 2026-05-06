@@ -1,0 +1,105 @@
+.create-work {
+  padding: 40px 0;
+}
+
+.create-work__card {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 28px;
+  border-radius: 16px;
+  border: 1px solid #2a2a2a;
+  background: #181818;
+}
+
+.create-work__header {
+  margin-bottom: 24px;
+}
+
+.create-work__title {
+  margin: 0 0 8px;
+  color: #fff;
+  font-size: 32px;
+}
+
+.create-work__subtitle {
+  margin: 0;
+  color: #aaa;
+  line-height: 1.6;
+}
+
+.create-work__form {
+  display: grid;
+  gap: 18px;
+}
+
+.create-work__field {
+  display: grid;
+  gap: 8px;
+  color: #ddd;
+  font-size: 15px;
+}
+
+.create-work__hint {
+  color: #888;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.create-work__input,
+.create-work__textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  background: #101010;
+  color: #fff;
+  font-size: 16px;
+}
+
+.create-work__textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.create-work__textarea--content {
+  min-height: 320px;
+}
+
+.create-work__error {
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(202, 7, 7, 0.15);
+  color: #ff8a8a;
+}
+
+.create-work__actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.create-work__submit,
+.create-work__cancel {
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.create-work__submit {
+  border: none;
+  background: #5a5aff;
+  color: #fff;
+}
+
+.create-work__cancel {
+  border: 1px solid #333;
+  background: transparent;
+  color: #fff;
+}
+
+.create-work__submit:hover,
+.create-work__cancel:hover {
+  opacity: 0.92;
+}
