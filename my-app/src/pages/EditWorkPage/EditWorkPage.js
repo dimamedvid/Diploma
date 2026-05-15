@@ -13,6 +13,7 @@ import "./EditWorkPage.css";
 
 const PAGE_SIZE = 3500;
 const MAX_WORD_LENGTH = 120;
+const MIN_CONTENT_LENGTH = 300;
 
 /**
  * Перевіряє, чи містить текст надто довгі фрагменти без пробілів.
@@ -24,6 +25,25 @@ function hasTooLongWords(rawText) {
   return rawText
     .split(/\s+/)
     .some((word) => word.length > MAX_WORD_LENGTH);
+}
+
+/**
+ * Перевіряє, чи є посилання коректним URL для обкладинки.
+ *
+ * @param {string} url - Посилання на обкладинку.
+ * @returns {boolean} true, якщо URL порожній або починається з http/https.
+ */
+function isValidCoverUrl(url) {
+  const normalizedUrl = url.trim();
+
+  if (!normalizedUrl) {
+    return true;
+  }
+
+  return (
+    normalizedUrl.startsWith("http://") ||
+    normalizedUrl.startsWith("https://")
+  );
 }
 
 /**
@@ -55,7 +75,10 @@ function splitTextAutomatically(rawText) {
     if (nextPage.length > PAGE_SIZE && currentPage) {
       pages.push(currentPage);
       currentPage = textPart;
-    } else if (textPart.length > PAGE_SIZE) {
+      return;
+    }
+
+    if (textPart.length > PAGE_SIZE) {
       const words = textPart.split(/\s+/);
       let chunk = "";
 
@@ -71,9 +94,10 @@ function splitTextAutomatically(rawText) {
       });
 
       currentPage = chunk;
-    } else {
-      currentPage = nextPage;
+      return;
     }
+
+    currentPage = nextPage;
   };
 
   paragraphs.forEach((paragraph) => {
@@ -112,6 +136,19 @@ function splitTextIntoPages(rawText) {
  */
 function joinPagesForEditing(pages) {
   return pages.join("\n\n---\n\n");
+}
+
+/**
+ * Розбиває текст сторінки на абзаци.
+ *
+ * @param {string} text - Текст сторінки.
+ * @returns {JSX.Element[]} Масив абзаців.
+ */
+function renderParagraphs(text) {
+  return text
+    .split("\n\n")
+    .filter(Boolean)
+    .map((paragraph, index) => <p key={index}>{paragraph}</p>);
 }
 
 /**
@@ -166,9 +203,6 @@ function findUserWork(workId, pendingWorks, approvedWorks, rejectedWorks) {
 /**
  * Сторінка редагування власного твору.
  *
- * Якщо редагується опублікований або відхилений твір,
- * після збереження він знову потрапляє на модерацію.
- *
  * @returns {JSX.Element} Форма редагування твору.
  */
 export default function EditWorkPage() {
@@ -202,7 +236,16 @@ export default function EditWorkPage() {
     work?.pages ? joinPagesForEditing(work.pages) : "",
   );
   const [error, setError] = useState("");
+  const [previewPage, setPreviewPage] = useState(0);
 
+  const pages = useMemo(() => {
+    return splitTextIntoPages(content);
+  }, [content]);
+
+  const contentLength = content.trim().length;
+  const safePreviewPage = Math.min(previewPage, Math.max(pages.length - 1, 0));
+  const previewPageText =
+    pages[safePreviewPage] || "Текст твору поки не додано.";
   const isOwner = work?.authorId === userId;
 
   if (!work || !isOwner) {
@@ -227,6 +270,24 @@ export default function EditWorkPage() {
   }
 
   /**
+   * Переходить на попередню сторінку preview.
+   *
+   * @returns {void}
+   */
+  const goToPreviousPreviewPage = () => {
+    setPreviewPage((page) => Math.max(page - 1, 0));
+  };
+
+  /**
+   * Переходить на наступну сторінку preview.
+   *
+   * @returns {void}
+   */
+  const goToNextPreviewPage = () => {
+    setPreviewPage((page) => Math.min(page + 1, pages.length - 1));
+  };
+
+  /**
    * Зберігає зміни твору.
    *
    * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
@@ -235,6 +296,23 @@ export default function EditWorkPage() {
   const handleSubmit = (event) => {
     event.preventDefault();
 
+    if (!title.trim() || !genre.trim() || !description.trim()) {
+      setError("Заповніть назву, жанр і короткий опис твору.");
+      return;
+    }
+
+    if (contentLength < MIN_CONTENT_LENGTH) {
+      setError(
+        `Текст твору має містити щонайменше ${MIN_CONTENT_LENGTH} символів.`,
+      );
+      return;
+    }
+
+    if (!isValidCoverUrl(cover)) {
+      setError("Посилання на обкладинку має починатися з http:// або https://.");
+      return;
+    }
+
     if (hasTooLongWords(content)) {
       setError(
         "Текст містить надто довгий фрагмент без пробілів. Перевірте текст твору.",
@@ -242,15 +320,8 @@ export default function EditWorkPage() {
       return;
     }
 
-    const pages = splitTextIntoPages(content);
-
-    if (
-      !title.trim()
-      || !genre.trim()
-      || !description.trim()
-      || pages.length === 0
-    ) {
-      setError("Заповніть назву, жанр, опис і текст твору.");
+    if (pages.length === 0) {
+      setError("Додайте текст твору.");
       return;
     }
 
@@ -377,10 +448,102 @@ export default function EditWorkPage() {
             <textarea
               className="edit-work__textarea edit-work__textarea--content"
               value={content}
-              onChange={(event) => setContent(event.target.value)}
+              onChange={(event) => {
+                setContent(event.target.value);
+                setPreviewPage(0);
+              }}
               rows="14"
             />
           </label>
+
+          <div className="edit-work__stats">
+            <div className="edit-work__stat">
+              <span>Символів у тексті</span>
+              <strong>{contentLength}</strong>
+            </div>
+
+            <div className="edit-work__stat">
+              <span>Сторінок після збереження</span>
+              <strong>{pages.length}</strong>
+            </div>
+
+            <div className="edit-work__stat">
+              <span>Поточний статус</span>
+              <strong>{source}</strong>
+            </div>
+          </div>
+
+          <section className="edit-work__preview">
+            <div className="edit-work__preview-header">
+              <h2 className="edit-work__preview-title">
+                Попередній перегляд
+              </h2>
+
+              <span className="edit-work__preview-pages">
+                Сторінка {pages.length > 0 ? safePreviewPage + 1 : 0} з{" "}
+                {pages.length}
+              </span>
+            </div>
+
+            <div className="edit-work__preview-card">
+              <img
+                className="edit-work__preview-cover"
+                src={cover}
+                alt={title || "Обкладинка твору"}
+              />
+
+              <div className="edit-work__preview-info">
+                <h3>{title || "Назва твору"}</h3>
+
+                <div className="edit-work__preview-meta">
+                  <span>{genre || "Жанр"}</span>
+                  <span>Після збереження: на модерації</span>
+                </div>
+
+                <p className="edit-work__preview-description">
+                  {description || "Короткий опис твору буде показано тут."}
+                </p>
+              </div>
+            </div>
+
+            <div className="edit-work__preview-reader">
+              <div className="edit-work__preview-reader-header">
+                <h3>Перегляд сторінки</h3>
+
+                <span>
+                  {pages.length > 0
+                    ? `${safePreviewPage + 1} / ${pages.length}`
+                    : "0 / 0"}
+                </span>
+              </div>
+
+              <div className="edit-work__preview-page">
+                {renderParagraphs(previewPageText)}
+              </div>
+
+              {pages.length > 1 && (
+                <div className="edit-work__preview-controls">
+                  <button
+                    className="edit-work__preview-button"
+                    type="button"
+                    onClick={goToPreviousPreviewPage}
+                    disabled={safePreviewPage === 0}
+                  >
+                    Попередня
+                  </button>
+
+                  <button
+                    className="edit-work__preview-button"
+                    type="button"
+                    onClick={goToNextPreviewPage}
+                    disabled={safePreviewPage === pages.length - 1}
+                  >
+                    Наступна
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
 
           <div className="edit-work__actions">
             <button className="edit-work__submit" type="submit">

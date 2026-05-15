@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
@@ -15,15 +15,13 @@ const DEFAULT_COVER =
 
 const PAGE_SIZE = 3500;
 const MAX_WORD_LENGTH = 120;
+const MIN_CONTENT_LENGTH = 300;
 
 /**
  * Перевіряє, чи містить текст надто довгі фрагменти без пробілів.
  *
- * Такі фрагменти зазвичай є посиланнями, base64-рядками або випадково
- * вставленими технічними даними, які можуть зламати верстку сторінки.
- *
  * @param {string} rawText - Текст твору.
- * @returns {boolean} true, якщо знайдено надто довге слово або посилання.
+ * @returns {boolean} true, якщо знайдено надто довгий фрагмент.
  */
 function hasTooLongWords(rawText) {
   return rawText
@@ -32,11 +30,26 @@ function hasTooLongWords(rawText) {
 }
 
 /**
- * Автоматично розбиває текст твору на сторінки.
+ * Перевіряє, чи є посилання коректним URL для обкладинки.
  *
- * Текст спочатку ділиться за абзацами.
- * Якщо абзац занадто великий, він додатково ділиться на частини,
- * щоб одна довга частина тексту не потрапила на одну сторінку.
+ * @param {string} url - Посилання на обкладинку.
+ * @returns {boolean} true, якщо URL порожній або починається з http/https.
+ */
+function isValidCoverUrl(url) {
+  const normalizedUrl = url.trim();
+
+  if (!normalizedUrl) {
+    return true;
+  }
+
+  return (
+    normalizedUrl.startsWith("http://") ||
+    normalizedUrl.startsWith("https://")
+  );
+}
+
+/**
+ * Автоматично розбиває текст твору на сторінки.
  *
  * @param {string} rawText - Повний текст твору.
  * @returns {string[]} Масив сторінок твору.
@@ -64,7 +77,10 @@ function splitTextAutomatically(rawText) {
     if (nextPage.length > PAGE_SIZE && currentPage) {
       pages.push(currentPage);
       currentPage = textPart;
-    } else if (textPart.length > PAGE_SIZE) {
+      return;
+    }
+
+    if (textPart.length > PAGE_SIZE) {
       const words = textPart.split(/\s+/);
       let chunk = "";
 
@@ -80,9 +96,10 @@ function splitTextAutomatically(rawText) {
       });
 
       currentPage = chunk;
-    } else {
-      currentPage = nextPage;
+      return;
     }
+
+    currentPage = nextPage;
   };
 
   paragraphs.forEach((paragraph) => {
@@ -99,9 +116,6 @@ function splitTextAutomatically(rawText) {
 /**
  * Розбиває текст твору на сторінки.
  *
- * Якщо автор використовує розділювач `---`, сторінки створюються вручну.
- * Якщо розділювача немає, текст автоматично ділиться на сторінки.
- *
  * @param {string} rawText - Повний текст із поля введення.
  * @returns {string[]} Масив сторінок твору.
  */
@@ -117,10 +131,20 @@ function splitTextIntoPages(rawText) {
 }
 
 /**
- * Сторінка створення нового твору користувачем.
+ * Розбиває текст сторінки на абзаци для попереднього перегляду.
  *
- * Після заповнення форми твір зберігається як такий,
- * що очікує перевірки модератором.
+ * @param {string} text - Текст сторінки.
+ * @returns {JSX.Element[]} Масив абзаців.
+ */
+function renderParagraphs(text) {
+  return text
+    .split("\n\n")
+    .filter(Boolean)
+    .map((paragraph, index) => <p key={index}>{paragraph}</p>);
+}
+
+/**
+ * Сторінка створення нового твору користувачем.
  *
  * @returns {JSX.Element} Форма додавання нового твору.
  */
@@ -134,6 +158,56 @@ export default function CreateWorkPage() {
   const [cover, setCover] = useState("");
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
+  const [previewPage, setPreviewPage] = useState(0);
+
+  const pages = useMemo(() => {
+    return splitTextIntoPages(content);
+  }, [content]);
+
+  const contentLength = content.trim().length;
+  const previewCover = cover.trim() || DEFAULT_COVER;
+  const safePreviewPage = Math.min(previewPage, Math.max(pages.length - 1, 0));
+  const previewPageText =
+    pages[safePreviewPage] || "Текст твору поки не додано.";
+
+  /**
+   * Очищає всі поля форми.
+   *
+   * @returns {void}
+   */
+  const clearForm = () => {
+    const shouldClear = window.confirm("Очистити всі поля форми?");
+
+    if (!shouldClear) {
+      return;
+    }
+
+    setTitle("");
+    setGenre("");
+    setDescription("");
+    setCover("");
+    setContent("");
+    setError("");
+    setPreviewPage(0);
+  };
+
+  /**
+   * Переходить на попередню сторінку попереднього перегляду.
+   *
+   * @returns {void}
+   */
+  const goToPreviousPreviewPage = () => {
+    setPreviewPage((page) => Math.max(page - 1, 0));
+  };
+
+  /**
+   * Переходить на наступну сторінку попереднього перегляду.
+   *
+   * @returns {void}
+   */
+  const goToNextPreviewPage = () => {
+    setPreviewPage((page) => Math.min(page + 1, pages.length - 1));
+  };
 
   /**
    * Обробляє відправку форми створення твору.
@@ -144,22 +218,32 @@ export default function CreateWorkPage() {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (hasTooLongWords(content)) {
+    if (!title.trim() || !genre.trim() || !description.trim()) {
+      setError("Заповніть назву, жанр і короткий опис твору.");
+      return;
+    }
+
+    if (contentLength < MIN_CONTENT_LENGTH) {
       setError(
-        "Текст містить надто довгий фрагмент без пробілів. Перевірте, чи не вставлено посилання або некоректний технічний текст у поле твору.",
+        `Текст твору має містити щонайменше ${MIN_CONTENT_LENGTH} символів.`,
       );
       return;
     }
 
-    const pages = splitTextIntoPages(content);
+    if (!isValidCoverUrl(cover)) {
+      setError("Посилання на обкладинку має починатися з http:// або https://.");
+      return;
+    }
 
-    if (
-      !title.trim()
-      || !genre.trim()
-      || !description.trim()
-      || pages.length === 0
-    ) {
-      setError("Заповніть назву, жанр, опис і текст твору.");
+    if (hasTooLongWords(content)) {
+      setError(
+        "Текст містить надто довгий фрагмент без пробілів. Перевірте, чи не вставлено посилання або технічний текст у поле твору.",
+      );
+      return;
+    }
+
+    if (pages.length === 0) {
+      setError("Додайте текст твору.");
       return;
     }
 
@@ -173,7 +257,7 @@ export default function CreateWorkPage() {
       genre: genre.trim(),
       rating: 0,
       description: description.trim(),
-      cover: cover.trim() || DEFAULT_COVER,
+      cover: previewCover,
       pages,
       status: "pending",
       submittedAt: new Date().toLocaleDateString("uk-UA"),
@@ -190,8 +274,8 @@ export default function CreateWorkPage() {
           <div>
             <h1 className="create-work__title">Додати твір</h1>
             <p className="create-work__subtitle">
-              Заповніть інформацію про твір. Після відправлення він потрапить
-              на модерацію і буде опублікований тільки після підтвердження.
+              Заповніть інформацію про твір. Перед відправленням можна
+              переглянути, як він виглядатиме після публікації.
             </p>
           </div>
         </div>
@@ -238,6 +322,11 @@ export default function CreateWorkPage() {
               onChange={(event) => setCover(event.target.value)}
               placeholder="https://..."
             />
+
+            <span className="create-work__hint">
+              Якщо залишити поле порожнім, буде використано стандартну
+              обкладинку.
+            </span>
           </label>
 
           <label className="create-work__field">
@@ -245,14 +334,16 @@ export default function CreateWorkPage() {
             <span className="create-work__hint">
               Вставте повний текст. Система автоматично розділить його на
               сторінки. Якщо хочете поділити вручну, поставте --- на окремому
-              рядку між сторінками. Не вставляйте сюди посилання або технічні
-              рядки.
+              рядку між сторінками.
             </span>
 
             <textarea
               className="create-work__textarea create-work__textarea--content"
               value={content}
-              onChange={(event) => setContent(event.target.value)}
+              onChange={(event) => {
+                setContent(event.target.value);
+                setPreviewPage(0);
+              }}
               placeholder={
                 "Вставте текст твору тут.\n\nНовий абзац робіть через порожній рядок.\n\nДля ручного поділу сторінок поставте --- між частинами тексту."
               }
@@ -260,9 +351,109 @@ export default function CreateWorkPage() {
             />
           </label>
 
+          <div className="create-work__stats">
+            <div className="create-work__stat">
+              <span>Символів у тексті</span>
+              <strong>{contentLength}</strong>
+            </div>
+
+            <div className="create-work__stat">
+              <span>Буде створено сторінок</span>
+              <strong>{pages.length}</strong>
+            </div>
+
+            <div className="create-work__stat">
+              <span>Мінімальна довжина</span>
+              <strong>{MIN_CONTENT_LENGTH}</strong>
+            </div>
+          </div>
+
+          <section className="create-work__preview">
+            <div className="create-work__preview-header">
+              <h2 className="create-work__preview-title">
+                Попередній перегляд
+              </h2>
+
+              <span className="create-work__preview-pages">
+                Сторінка {pages.length > 0 ? safePreviewPage + 1 : 0} з{" "}
+                {pages.length}
+              </span>
+            </div>
+
+            <div className="create-work__preview-card">
+              <img
+                className="create-work__preview-cover"
+                src={previewCover}
+                alt={title || "Обкладинка твору"}
+              />
+
+              <div className="create-work__preview-info">
+                <h3>{title || "Назва твору"}</h3>
+                <p className="create-work__preview-author">
+                  {getUserFullName(user)}
+                </p>
+
+                <div className="create-work__preview-meta">
+                  <span>{genre || "Жанр"}</span>
+                  <span>На модерації</span>
+                </div>
+
+                <p className="create-work__preview-description">
+                  {description || "Короткий опис твору буде показано тут."}
+                </p>
+              </div>
+            </div>
+
+            <div className="create-work__preview-reader">
+              <div className="create-work__preview-reader-header">
+                <h3>Перегляд сторінки</h3>
+
+                <span>
+                  {pages.length > 0
+                    ? `${safePreviewPage + 1} / ${pages.length}`
+                    : "0 / 0"}
+                </span>
+              </div>
+
+              <div className="create-work__preview-page">
+                {renderParagraphs(previewPageText)}
+              </div>
+
+              {pages.length > 1 && (
+                <div className="create-work__preview-controls">
+                  <button
+                    className="create-work__preview-button"
+                    type="button"
+                    onClick={goToPreviousPreviewPage}
+                    disabled={safePreviewPage === 0}
+                  >
+                    Попередня
+                  </button>
+
+                  <button
+                    className="create-work__preview-button"
+                    type="button"
+                    onClick={goToNextPreviewPage}
+                    disabled={safePreviewPage === pages.length - 1}
+                  >
+                    Наступна
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+
           <div className="create-work__actions">
             <button className="create-work__submit" type="submit">
               Відправити на модерацію
+            </button>
+
+            <button
+              className="create-work__clear"
+              type="button"
+              onClick={clearForm}
+            >
+              Очистити форму
             </button>
 
             <button

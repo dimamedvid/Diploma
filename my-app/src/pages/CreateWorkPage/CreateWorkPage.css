@@ -3,7 +3,7 @@
 }
 
 .create-work__card {
-  max-width: 860px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 28px;
   border-radius: 16px;
@@ -73,6 +73,176 @@
   color: #ff8a8a;
 }
 
+.create-work__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.create-work__stat {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  background: #101010;
+}
+
+.create-work__stat span {
+  color: #888;
+  font-size: 13px;
+}
+
+.create-work__stat strong {
+  color: #fff;
+  font-size: 22px;
+}
+
+.create-work__preview {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  background: #101010;
+}
+
+.create-work__preview-header,
+.create-work__preview-reader-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.create-work__preview-title {
+  margin: 0;
+  color: #fff;
+  font-size: 26px;
+}
+
+.create-work__preview-pages {
+  color: #aaa;
+  white-space: nowrap;
+}
+
+.create-work__preview-card {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 22px;
+}
+
+.create-work__preview-cover {
+  width: 160px;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #181818;
+}
+
+.create-work__preview-info {
+  min-width: 0;
+}
+
+.create-work__preview-info h3 {
+  margin: 0 0 8px;
+  color: #fff;
+  font-size: 26px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.create-work__preview-author {
+  margin: 0 0 14px;
+  color: #ccc;
+  font-size: 18px;
+}
+
+.create-work__preview-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.create-work__preview-meta span {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #2d2d2d;
+  color: #ddd;
+  font-size: 14px;
+}
+
+.create-work__preview-description {
+  margin: 0;
+  color: #aaa;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.create-work__preview-reader {
+  padding: 18px;
+  border-radius: 14px;
+  background: #f4efe6;
+  color: #1c1c1c;
+}
+
+.create-work__preview-reader h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.create-work__preview-reader-header {
+  margin-bottom: 16px;
+}
+
+.create-work__preview-reader-header span {
+  color: #555;
+  font-size: 14px;
+}
+
+.create-work__preview-page {
+  max-height: 340px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  font-size: 17px;
+  line-height: 1.7;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.create-work__preview-page p {
+  margin: 0 0 16px;
+  text-align: justify;
+  text-indent: 24px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.create-work__preview-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.create-work__preview-button {
+  min-width: 130px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #5a5aff;
+  color: #fff;
+  cursor: pointer;
+}
+
+.create-work__preview-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .create-work__actions {
   display: flex;
   gap: 14px;
@@ -80,7 +250,8 @@
 }
 
 .create-work__submit,
-.create-work__cancel {
+.create-work__cancel,
+.create-work__clear {
   padding: 12px 18px;
   border-radius: 10px;
   cursor: pointer;
@@ -93,6 +264,17 @@
   color: #fff;
 }
 
+.create-work__clear {
+  border: 1px solid #e0a800;
+  background: transparent;
+  color: #fff;
+}
+
+.create-work__clear:hover {
+  background: #e0a800;
+  color: #101010;
+}
+
 .create-work__cancel {
   border: 1px solid #333;
   background: transparent;
@@ -102,4 +284,25 @@
 .create-work__submit:hover,
 .create-work__cancel:hover {
   opacity: 0.92;
+}
+
+@media (max-width: 760px) {
+  .create-work__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .create-work__preview-header,
+  .create-work__preview-reader-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .create-work__preview-card {
+    grid-template-columns: 1fr;
+  }
+
+  .create-work__preview-cover {
+    width: 140px;
+    height: 190px;
+  }
 }
