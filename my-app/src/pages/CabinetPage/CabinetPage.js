@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import worksData from "../../data/works.json";
@@ -17,12 +17,14 @@ import {
 import "./CabinetPage.css";
 
 const FAVORITES_STORAGE_KEY = "favoriteWorks";
+const FAVORITE_GENRES_STORAGE_KEY = "favoriteGenresByUser";
+const MAX_FAVORITE_GENRES = 3;
 
 /**
  * Повертає коментарі поточного користувача до творів.
  *
  * @param {Object[]} works - Список творів.
- * @param {Object.<string, Array>} commentsByWork - Коментарі, згруповані за ID твору.
+ * @param {Object.<string, Array>} commentsByWork - Коментарі за ID твору.
  * @param {string} userId - ID поточного користувача.
  * @returns {Object[]} Список коментарів користувача.
  */
@@ -42,7 +44,31 @@ function getUserComments(works, commentsByWork, userId) {
 }
 
 /**
+ * Повертає список усіх жанрів з опублікованих творів.
+ *
+ * @param {Object[]} works - Список творів.
+ * @returns {string[]} Список унікальних жанрів.
+ */
+function getAvailableGenres(works) {
+  return [...new Set(works.map((work) => work.genre))];
+}
+
+/**
+ * Повертає улюблені жанри конкретного користувача.
+ *
+ * @param {Object.<string, string[]>} favoriteGenresByUser - Дані жанрів.
+ * @param {string} userId - ID користувача.
+ * @returns {string[]} Улюблені жанри користувача.
+ */
+function getUserFavoriteGenres(favoriteGenresByUser, userId) {
+  return favoriteGenresByUser[userId] || [];
+}
+
+/**
  * Сторінка особистого кабінету авторизованого користувача.
+ *
+ * Відображає дані користувача, улюблені жанри, власні твори,
+ * обране, коментарі та оцінки.
  *
  * @returns {JSX.Element} Сторінка особистого кабінету.
  */
@@ -50,6 +76,12 @@ export default function CabinetPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+
+  const [worksFilter, setWorksFilter] = useState("all");
+
+  const [favoriteGenresByUser, setFavoriteGenresByUser] = useState(() =>
+    readFromStorage(FAVORITE_GENRES_STORAGE_KEY, {}),
+  );
 
   const favoriteIds = useMemo(() => {
     return readFromStorage(FAVORITES_STORAGE_KEY, []);
@@ -77,6 +109,13 @@ export default function CabinetPage() {
 
   const userId = getUserId(user);
   const userFullName = getUserFullName(user);
+
+  const availableGenres = getAvailableGenres(allPublishedWorks);
+
+  const selectedFavoriteGenres = getUserFavoriteGenres(
+    favoriteGenresByUser,
+    userId,
+  );
 
   const favoriteWorks = allPublishedWorks.filter((work) =>
     favoriteIds.includes(work.id),
@@ -106,6 +145,14 @@ export default function CabinetPage() {
       })),
   ];
 
+  const filteredUserWorks = userWorks.filter((work) => {
+    if (worksFilter === "all") {
+      return true;
+    }
+
+    return work.statusType === worksFilter;
+  });
+
   const userComments = getUserComments(
     allPublishedWorks,
     commentsByWork,
@@ -120,6 +167,32 @@ export default function CabinetPage() {
   const onLogout = () => {
     dispatch(logout());
     navigate("/login");
+  };
+
+  /**
+   * Додає або прибирає жанр зі списку улюблених жанрів користувача.
+   *
+   * @param {string} genre - Назва жанру.
+   * @returns {void}
+   */
+  const toggleFavoriteGenre = (genre) => {
+    const isSelected = selectedFavoriteGenres.includes(genre);
+
+    if (!isSelected && selectedFavoriteGenres.length >= MAX_FAVORITE_GENRES) {
+      return;
+    }
+
+    const updatedGenres = isSelected
+      ? selectedFavoriteGenres.filter((selectedGenre) => selectedGenre !== genre)
+      : [...selectedFavoriteGenres, genre];
+
+    const updatedFavoriteGenresByUser = {
+      ...favoriteGenresByUser,
+      [userId]: updatedGenres,
+    };
+
+    setFavoriteGenresByUser(updatedFavoriteGenresByUser);
+    writeToStorage(FAVORITE_GENRES_STORAGE_KEY, updatedFavoriteGenresByUser);
   };
 
   /**
@@ -204,6 +277,44 @@ export default function CabinetPage() {
             <strong>{user.email}</strong>
           </div>
         </div>
+
+        <div className="cabinet__genres">
+          <div className="cabinet__genres-header">
+            <h2 className="cabinet__genres-title">Улюблені жанри</h2>
+
+            <span className="cabinet__genres-counter">
+              Обрано {selectedFavoriteGenres.length} з {MAX_FAVORITE_GENRES}
+            </span>
+          </div>
+
+          <p className="cabinet__genres-text">
+            Оберіть до трьох жанрів. На головній сторінці твори цих жанрів
+            будуть показуватись першими.
+          </p>
+
+          <div className="cabinet__genres-list">
+            {availableGenres.map((genreName) => {
+              const isSelected = selectedFavoriteGenres.includes(genreName);
+              const isDisabled =
+                !isSelected &&
+                selectedFavoriteGenres.length >= MAX_FAVORITE_GENRES;
+
+              return (
+                <button
+                  className={`cabinet__genre-button ${
+                    isSelected ? "cabinet__genre-button--active" : ""
+                  }`}
+                  type="button"
+                  key={genreName}
+                  onClick={() => toggleFavoriteGenre(genreName)}
+                  disabled={isDisabled}
+                >
+                  {genreName}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       <section className="cabinet__section">
@@ -215,13 +326,55 @@ export default function CabinetPage() {
           </Link>
         </div>
 
-        {userWorks.length === 0 ? (
+        <div className="cabinet__filters">
+          <button
+            className={`cabinet__filter-button ${
+              worksFilter === "all" ? "cabinet__filter-button--active" : ""
+            }`}
+            type="button"
+            onClick={() => setWorksFilter("all")}
+          >
+            Усі
+          </button>
+
+          <button
+            className={`cabinet__filter-button ${
+              worksFilter === "pending" ? "cabinet__filter-button--active" : ""
+            }`}
+            type="button"
+            onClick={() => setWorksFilter("pending")}
+          >
+            На модерації
+          </button>
+
+          <button
+            className={`cabinet__filter-button ${
+              worksFilter === "approved" ? "cabinet__filter-button--active" : ""
+            }`}
+            type="button"
+            onClick={() => setWorksFilter("approved")}
+          >
+            Опубліковані
+          </button>
+
+          <button
+            className={`cabinet__filter-button ${
+              worksFilter === "rejected" ? "cabinet__filter-button--active" : ""
+            }`}
+            type="button"
+            onClick={() => setWorksFilter("rejected")}
+          >
+            Відхилені
+          </button>
+        </div>
+
+        {filteredUserWorks.length === 0 ? (
           <p className="cabinet__empty">
-            Ви ще не відправляли власні твори на публікацію.
+            Немає творів для вибраного фільтра.
           </p>
         ) : (
           <div className="cabinet__list">
-            {userWorks.map((work) => (
+            {filteredUserWorks.map((work) => (
               <article
                 className="cabinet__work"
                 key={`${work.statusType}-${work.id}`}
