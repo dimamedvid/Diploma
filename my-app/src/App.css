@@ -14,3 +14,38 @@
 .results__count {
   color: #f0f0f0;
 }
+
+.access-denied {
+  max-width: 720px;
+  margin: 60px auto;
+  padding: 32px;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  background: #181818;
+  color: #fff;
+  text-align: center;
+}
+
+.access-denied__title {
+  margin: 0 0 12px;
+  font-size: 32px;
+}
+
+.access-denied__text {
+  margin: 0 0 24px;
+  color: #ccc;
+  line-height: 1.6;
+}
+
+.access-denied__link {
+  display: inline-block;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: #5a5aff;
+  color: #fff;
+  text-decoration: none;
+}
+
+.access-denied__link:hover {
+  opacity: 0.92;
+}

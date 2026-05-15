@@ -10,14 +10,15 @@ import Header from "./components/Header/Header";
 import AdminPage from "./pages/AdminPage/AdminPage";
 import Footer from "./components/Footer/Footer";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import AdminRoute from "./auth/AdminRoute";
 import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
 import "./App.css";
 
 /**
  * Головний компонент застосунку.
  *
- * Визначає маршрути сторінок, спільний layout,
- * header, footer та захищені маршрути для авторизованих користувачів.
+ * Визначає основні маршрути, layout застосунку,
+ * захищені сторінки користувача та захищену сторінку модерації.
  *
  * @returns {JSX.Element} Основна структура застосунку.
  */
@@ -25,11 +26,11 @@ export default function App() {
   return (
     <div className="layout">
       <Header />
+
       <main className="layout__content">
         <div className="container">
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/works/:id" element={<WorkDetailsPage />} />
 
             <Route
               path="/works/create"
@@ -40,7 +41,16 @@ export default function App() {
               }
             />
 
-            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/works/:id" element={<WorkDetailsPage />} />
+
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
+              }
+            />
 
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -58,6 +68,7 @@ export default function App() {
           </Routes>
         </div>
       </main>
+
       <Footer />
     </div>
   );

@@ -14,6 +14,16 @@
             "date": 1778080903042,
             "name": "D:\\Диплом\\code\\server\\logs\\error-2026-05-06.log",
             "hash": "b0692cca8b7621c0abfeb0f00ea1567e05a975c27d39a2bd6912cce8680fc494"
+        },
+        {
+            "date": 1778345541851,
+            "name": "D:\\Диплом\\code\\server\\logs\\error-2026-05-09.log",
+            "hash": "8ab35e79380c8baa9f4b271f6df1726ce325b852a23ec20128afbb378275cfc1"
+        },
+        {
+            "date": 1778852887249,
+            "name": "D:\\Диплом\\code\\server\\logs\\error-2026-05-15.log",
+            "hash": "dbdc3879750ce7421901ce144b9fcedb35b6b18818aa34dc88bb73ae286b9b52"
         }
     ],
     "hashType": "sha256"
