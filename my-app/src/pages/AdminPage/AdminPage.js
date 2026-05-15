@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   APPROVED_WORKS_STORAGE_KEY,
   PENDING_WORKS_STORAGE_KEY,
+  REJECTED_WORKS_STORAGE_KEY,
   readFromStorage,
   writeToStorage,
 } from "../../utils/worksStorage";
@@ -24,7 +25,7 @@ function renderParagraphs(text) {
  * Сторінка модерації користувацьких творів.
  *
  * Дозволяє переглядати всі сторінки твору,
- * підтверджувати публікацію або відхиляти твір.
+ * підтверджувати публікацію або відхиляти твір із причиною.
  *
  * @returns {JSX.Element} Сторінка адміністратора/модератора.
  */
@@ -35,6 +36,10 @@ export default function AdminPage() {
 
   const [approvedWorks, setApprovedWorks] = useState(() =>
     readFromStorage(APPROVED_WORKS_STORAGE_KEY, []),
+  );
+
+  const [rejectedWorks, setRejectedWorks] = useState(() =>
+    readFromStorage(REJECTED_WORKS_STORAGE_KEY, []),
   );
 
   const [currentPagesByWork, setCurrentPagesByWork] = useState({});
@@ -109,6 +114,8 @@ export default function AdminPage() {
       ...workToApprove,
       status: "approved",
       approvedAt: new Date().toLocaleDateString("uk-UA"),
+      rejectedAt: "",
+      rejectionReason: "",
     };
 
     const updatedPendingWorks = pendingWorks.filter(
@@ -125,18 +132,45 @@ export default function AdminPage() {
   };
 
   /**
-   * Відхиляє твір і видаляє його зі списку очікування.
+   * Відхиляє твір, зберігає причину відхилення і переносить його в історію.
    *
    * @param {number|string} workId - ID твору.
    * @returns {void}
    */
   const rejectWork = (workId) => {
+    const workToReject = pendingWorks.find((work) => work.id === workId);
+
+    if (!workToReject) {
+      return;
+    }
+
+    const reason = window.prompt(
+      "Вкажіть причину відхилення твору:",
+      "Потрібно доопрацювати зміст або оформлення твору.",
+    );
+
+    if (reason === null) {
+      return;
+    }
+
+    const rejectedWork = {
+      ...workToReject,
+      status: "rejected",
+      rejectedAt: new Date().toLocaleDateString("uk-UA"),
+      rejectionReason: reason.trim() || "Причину не вказано.",
+    };
+
     const updatedPendingWorks = pendingWorks.filter(
       (work) => work.id !== workId,
     );
 
+    const updatedRejectedWorks = [...rejectedWorks, rejectedWork];
+
     setPendingWorks(updatedPendingWorks);
+    setRejectedWorks(updatedRejectedWorks);
+
     writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
+    writeToStorage(REJECTED_WORKS_STORAGE_KEY, updatedRejectedWorks);
   };
 
   return (

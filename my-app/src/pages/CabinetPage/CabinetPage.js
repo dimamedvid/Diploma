@@ -5,7 +5,9 @@ import worksData from "../../data/works.json";
 import { logout } from "../../store/authSlice";
 import {
   APPROVED_WORKS_STORAGE_KEY,
+  COMMENTS_STORAGE_KEY,
   PENDING_WORKS_STORAGE_KEY,
+  REJECTED_WORKS_STORAGE_KEY,
   getAllPublishedWorks,
   getUserFullName,
   getUserId,
@@ -15,7 +17,6 @@ import {
 import "./CabinetPage.css";
 
 const FAVORITES_STORAGE_KEY = "favoriteWorks";
-const COMMENTS_STORAGE_KEY = "workComments";
 
 /**
  * Повертає коментарі поточного користувача до творів.
@@ -66,6 +67,10 @@ export default function CabinetPage() {
     return readFromStorage(APPROVED_WORKS_STORAGE_KEY, []);
   }, []);
 
+  const rejectedWorks = useMemo(() => {
+    return readFromStorage(REJECTED_WORKS_STORAGE_KEY, []);
+  }, []);
+
   const allPublishedWorks = useMemo(() => {
     return getAllPublishedWorks(worksData);
   }, []);
@@ -91,6 +96,13 @@ export default function CabinetPage() {
         ...work,
         displayStatus: "Опубліковано",
         statusType: "approved",
+      })),
+    ...rejectedWorks
+      .filter((work) => work.authorId === userId)
+      .map((work) => ({
+        ...work,
+        displayStatus: "Відхилено",
+        statusType: "rejected",
       })),
   ];
 
@@ -136,11 +148,21 @@ export default function CabinetPage() {
       return;
     }
 
-    const updatedApprovedWorks = approvedUserWorks.filter(
+    if (statusType === "approved") {
+      const updatedApprovedWorks = approvedUserWorks.filter(
+        (work) => work.id !== workId,
+      );
+
+      writeToStorage(APPROVED_WORKS_STORAGE_KEY, updatedApprovedWorks);
+      window.location.reload();
+      return;
+    }
+
+    const updatedRejectedWorks = rejectedWorks.filter(
       (work) => work.id !== workId,
     );
 
-    writeToStorage(APPROVED_WORKS_STORAGE_KEY, updatedApprovedWorks);
+    writeToStorage(REJECTED_WORKS_STORAGE_KEY, updatedRejectedWorks);
     window.location.reload();
   };
 
@@ -200,7 +222,10 @@ export default function CabinetPage() {
         ) : (
           <div className="cabinet__list">
             {userWorks.map((work) => (
-              <article className="cabinet__work" key={`${work.status}-${work.id}`}>
+              <article
+                className="cabinet__work"
+                key={`${work.statusType}-${work.id}`}
+              >
                 <img
                   className="cabinet__work-cover"
                   src={work.cover}
@@ -225,6 +250,26 @@ export default function CabinetPage() {
                     {work.description}
                   </p>
 
+                  {work.statusType === "pending" && (
+                    <span className="cabinet__note">
+                      Твір очікує перевірки модератором.
+                    </span>
+                  )}
+
+                  {work.statusType === "approved" && (
+                    <span className="cabinet__note cabinet__note--approved">
+                      Твір опубліковано {work.approvedAt || ""}.
+                    </span>
+                  )}
+
+                  {work.statusType === "rejected" && (
+                    <div className="cabinet__moderation-history">
+                      <strong>Причина відхилення:</strong>
+                      <p>{work.rejectionReason || "Причину не вказано."}</p>
+                      <span>Дата відхилення: {work.rejectedAt || "—"}</span>
+                    </div>
+                  )}
+
                   <div className="cabinet__work-actions">
                     {work.statusType === "approved" && (
                       <Link className="cabinet__link" to={`/works/${work.id}`}>
@@ -247,12 +292,6 @@ export default function CabinetPage() {
                       Видалити
                     </button>
                   </div>
-
-                  {work.statusType === "pending" && (
-                    <span className="cabinet__note">
-                      Твір стане доступним після підтвердження модератором.
-                    </span>
-                  )}
                 </div>
               </article>
             ))}

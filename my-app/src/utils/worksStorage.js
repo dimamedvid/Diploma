@@ -1,5 +1,6 @@
 export const APPROVED_WORKS_STORAGE_KEY = "approvedWorks";
 export const PENDING_WORKS_STORAGE_KEY = "pendingWorks";
+export const REJECTED_WORKS_STORAGE_KEY = "rejectedWorks";
 export const COMMENTS_STORAGE_KEY = "workComments";
 
 /**

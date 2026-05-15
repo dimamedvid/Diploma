@@ -283,6 +283,40 @@
   background: #ca0707;
 }
 
+.cabinet__status--rejected {
+  background: rgba(202, 7, 7, 0.18);
+  color: #ff8a8a;
+}
+
+.cabinet__note--approved {
+  color: #74e0a3;
+}
+
+.cabinet__moderation-history {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(202, 7, 7, 0.35);
+  border-radius: 12px;
+  background: rgba(202, 7, 7, 0.1);
+  color: #ddd;
+}
+
+.cabinet__moderation-history strong {
+  color: #ff8a8a;
+}
+
+.cabinet__moderation-history p {
+  margin: 0;
+  color: #ddd;
+  line-height: 1.5;
+}
+
+.cabinet__moderation-history span {
+  color: #aaa;
+  font-size: 13px;
+}
+
 @media (max-width: 760px) {
   .cabinet__header,
   .cabinet__section-header,

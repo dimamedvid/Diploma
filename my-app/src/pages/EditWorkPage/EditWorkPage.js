@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import {
   APPROVED_WORKS_STORAGE_KEY,
   PENDING_WORKS_STORAGE_KEY,
+  REJECTED_WORKS_STORAGE_KEY,
   getUserId,
   readFromStorage,
   writeToStorage,
@@ -114,14 +115,15 @@ function joinPagesForEditing(pages) {
 }
 
 /**
- * Шукає твір серед творів на модерації та опублікованих творів.
+ * Шукає твір серед творів на модерації, опублікованих і відхилених.
  *
  * @param {number|string} workId - ID твору.
  * @param {Object[]} pendingWorks - Твори на модерації.
  * @param {Object[]} approvedWorks - Опубліковані твори.
+ * @param {Object[]} rejectedWorks - Відхилені твори.
  * @returns {{ work: Object|null, source: string }} Знайдений твір і джерело.
  */
-function findUserWork(workId, pendingWorks, approvedWorks) {
+function findUserWork(workId, pendingWorks, approvedWorks, rejectedWorks) {
   const pendingWork = pendingWorks.find(
     (work) => String(work.id) === String(workId),
   );
@@ -144,6 +146,17 @@ function findUserWork(workId, pendingWorks, approvedWorks) {
     };
   }
 
+  const rejectedWork = rejectedWorks.find(
+    (work) => String(work.id) === String(workId),
+  );
+
+  if (rejectedWork) {
+    return {
+      work: rejectedWork,
+      source: "rejected",
+    };
+  }
+
   return {
     work: null,
     source: "",
@@ -153,8 +166,8 @@ function findUserWork(workId, pendingWorks, approvedWorks) {
 /**
  * Сторінка редагування власного твору.
  *
- * Якщо редагується опублікований твір, після збереження він знову
- * потрапляє на модерацію.
+ * Якщо редагується опублікований або відхилений твір,
+ * після збереження він знову потрапляє на модерацію.
  *
  * @returns {JSX.Element} Форма редагування твору.
  */
@@ -173,9 +186,13 @@ export default function EditWorkPage() {
     return readFromStorage(APPROVED_WORKS_STORAGE_KEY, []);
   }, []);
 
+  const rejectedWorks = useMemo(() => {
+    return readFromStorage(REJECTED_WORKS_STORAGE_KEY, []);
+  }, []);
+
   const { work, source } = useMemo(() => {
-    return findUserWork(id, pendingWorks, approvedWorks);
-  }, [id, pendingWorks, approvedWorks]);
+    return findUserWork(id, pendingWorks, approvedWorks, rejectedWorks);
+  }, [id, pendingWorks, approvedWorks, rejectedWorks]);
 
   const [title, setTitle] = useState(work?.title || "");
   const [genre, setGenre] = useState(work?.genre || "");
@@ -246,6 +263,8 @@ export default function EditWorkPage() {
       pages,
       status: "pending",
       updatedAt: new Date().toLocaleDateString("uk-UA"),
+      rejectedAt: "",
+      rejectionReason: "",
     };
 
     if (source === "pending") {
@@ -254,6 +273,26 @@ export default function EditWorkPage() {
       );
 
       writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
+      navigate("/cabinet");
+      return;
+    }
+
+    if (source === "rejected") {
+      const updatedRejectedWorks = rejectedWorks.filter(
+        (rejectedWork) => rejectedWork.id !== work.id,
+      );
+
+      const updatedPendingWorks = [
+        ...pendingWorks,
+        {
+          ...updatedWork,
+          submittedAt: new Date().toLocaleDateString("uk-UA"),
+        },
+      ];
+
+      writeToStorage(REJECTED_WORKS_STORAGE_KEY, updatedRejectedWorks);
+      writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
+
       navigate("/cabinet");
       return;
     }
@@ -283,8 +322,8 @@ export default function EditWorkPage() {
           <h1 className="edit-work__title">Редагувати твір</h1>
 
           <p className="edit-work__subtitle">
-            Після редагування опублікованого твору він знову буде відправлений
-            на модерацію.
+            Після редагування опублікованого або відхиленого твору він знову
+            буде відправлений на модерацію.
           </p>
         </div>
 
