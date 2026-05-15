@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 import FiltersBar from "../../components/FiltersBar/FiltersBar";
 import WorksGrid from "../../components/WorksGrid/WorksGrid";
 import worksData from "../../data/works.json";
-import { getAllPublishedWorks } from "../../utils/worksStorage";
+import {
+  enrichWorksWithRating,
+  getAllPublishedWorks,
+} from "../../utils/worksStorage";
 import "./HomePage.css";
 
 /**
@@ -20,11 +23,14 @@ export default function HomePage() {
   const [ratingMax, setRatingMax] = useState("5");
 
   const allWorks = useMemo(() => {
-    return getAllPublishedWorks(worksData);
+    const publishedWorks = getAllPublishedWorks(worksData);
+
+    return enrichWorksWithRating(publishedWorks);
   }, []);
 
   const genres = useMemo(() => {
     const uniqueGenres = [...new Set(allWorks.map((work) => work.genre))];
+
     return ["Всі жанри", ...uniqueGenres];
   }, [allWorks]);
 

@@ -6,6 +6,7 @@ import RegisterPage from "./pages/RegisterPage/RegisterPage";
 import CabinetPage from "./pages/CabinetPage/CabinetPage";
 import WorkDetailsPage from "./pages/WorkDetailsPage/WorkDetailsPage";
 import CreateWorkPage from "./pages/CreateWorkPage/CreateWorkPage";
+import EditWorkPage from "./pages/EditWorkPage/EditWorkPage";
 import Header from "./components/Header/Header";
 import AdminPage from "./pages/AdminPage/AdminPage";
 import Footer from "./components/Footer/Footer";
@@ -37,6 +38,15 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <CreateWorkPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/works/edit/:id"
+              element={
+                <ProtectedRoute>
+                  <EditWorkPage />
                 </ProtectedRoute>
               }
             />

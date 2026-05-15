@@ -1,5 +1,6 @@
 export const APPROVED_WORKS_STORAGE_KEY = "approvedWorks";
 export const PENDING_WORKS_STORAGE_KEY = "pendingWorks";
+export const COMMENTS_STORAGE_KEY = "workComments";
 
 /**
  * Безпечно отримує JSON-дані з localStorage.
@@ -11,6 +12,7 @@ export const PENDING_WORKS_STORAGE_KEY = "pendingWorks";
 export function readFromStorage(key, fallback) {
   try {
     const savedValue = localStorage.getItem(key);
+
     return savedValue ? JSON.parse(savedValue) : fallback;
   } catch {
     return fallback;
@@ -58,4 +60,69 @@ export function getAllPublishedWorks(baseWorks) {
   const approvedWorks = readFromStorage(APPROVED_WORKS_STORAGE_KEY, []);
 
   return [...baseWorks, ...approvedWorks];
+}
+
+/**
+ * Повертає коментарі конкретного твору.
+ *
+ * @param {Object.<string, Array>} commentsByWork - Коментарі, згруповані за ID твору.
+ * @param {number|string} workId - ID твору.
+ * @returns {Array} Масив коментарів твору.
+ */
+export function getCommentsForWork(commentsByWork, workId) {
+  return commentsByWork[String(workId)] || [];
+}
+
+/**
+ * Розраховує рейтинг твору на основі оцінок у коментарях.
+ *
+ * Якщо користувацьких оцінок немає, повертається базовий рейтинг твору.
+ *
+ * @param {Object} work - Твір.
+ * @param {Object.<string, Array>} commentsByWork - Коментарі, згруповані за ID твору.
+ * @returns {{ rating: number, ratingsCount: number, isCalculated: boolean }} Дані рейтингу.
+ */
+export function getWorkRatingStats(work, commentsByWork) {
+  const comments = getCommentsForWork(commentsByWork, work.id);
+
+  const ratings = comments
+    .map((comment) => Number(comment.rating))
+    .filter((rating) => !Number.isNaN(rating) && rating > 0);
+
+  if (ratings.length === 0) {
+    return {
+      rating: Number(work.rating || 0),
+      ratingsCount: 0,
+      isCalculated: false,
+    };
+  }
+
+  const total = ratings.reduce((sum, rating) => sum + rating, 0);
+
+  return {
+    rating: total / ratings.length,
+    ratingsCount: ratings.length,
+    isCalculated: true,
+  };
+}
+
+/**
+ * Додає до творів актуальний рейтинг, розрахований на основі коментарів.
+ *
+ * @param {Object[]} works - Список творів.
+ * @returns {Object[]} Список творів з актуальним рейтингом.
+ */
+export function enrichWorksWithRating(works) {
+  const commentsByWork = readFromStorage(COMMENTS_STORAGE_KEY, {});
+
+  return works.map((work) => {
+    const ratingStats = getWorkRatingStats(work, commentsByWork);
+
+    return {
+      ...work,
+      rating: ratingStats.rating,
+      ratingsCount: ratingStats.ratingsCount,
+      isRatingCalculated: ratingStats.isCalculated,
+    };
+  });
 }

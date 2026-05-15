@@ -10,6 +10,7 @@ import {
   getUserFullName,
   getUserId,
   readFromStorage,
+  writeToStorage,
 } from "../../utils/worksStorage";
 import "./CabinetPage.css";
 
@@ -41,9 +42,6 @@ function getUserComments(works, commentsByWork, userId) {
 
 /**
  * Сторінка особистого кабінету авторизованого користувача.
- *
- * Відображає персональні дані, створені твори користувача,
- * обрані твори, а також коментарі й оцінки.
  *
  * @returns {JSX.Element} Сторінка особистого кабінету.
  */
@@ -110,6 +108,40 @@ export default function CabinetPage() {
   const onLogout = () => {
     dispatch(logout());
     navigate("/login");
+  };
+
+  /**
+   * Видаляє власний твір користувача.
+   *
+   * @param {number|string} workId - ID твору.
+   * @param {string} statusType - Статус твору.
+   * @returns {void}
+   */
+  const deleteOwnWork = (workId, statusType) => {
+    const shouldDelete = window.confirm(
+      "Ви впевнені, що хочете видалити цей твір?",
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    if (statusType === "pending") {
+      const updatedPendingWorks = pendingWorks.filter(
+        (work) => work.id !== workId,
+      );
+
+      writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
+      window.location.reload();
+      return;
+    }
+
+    const updatedApprovedWorks = approvedUserWorks.filter(
+      (work) => work.id !== workId,
+    );
+
+    writeToStorage(APPROVED_WORKS_STORAGE_KEY, updatedApprovedWorks);
+    window.location.reload();
   };
 
   return (
@@ -193,11 +225,30 @@ export default function CabinetPage() {
                     {work.description}
                   </p>
 
-                  {work.statusType === "approved" ? (
-                    <Link className="cabinet__link" to={`/works/${work.id}`}>
-                      Перейти до твору
+                  <div className="cabinet__work-actions">
+                    {work.statusType === "approved" && (
+                      <Link className="cabinet__link" to={`/works/${work.id}`}>
+                        Перейти до твору
+                      </Link>
+                    )}
+
+                    <Link
+                      className="cabinet__link cabinet__link--secondary"
+                      to={`/works/edit/${work.id}`}
+                    >
+                      Редагувати
                     </Link>
-                  ) : (
+
+                    <button
+                      className="cabinet__delete"
+                      type="button"
+                      onClick={() => deleteOwnWork(work.id, work.statusType)}
+                    >
+                      Видалити
+                    </button>
+                  </div>
+
+                  {work.statusType === "pending" && (
                     <span className="cabinet__note">
                       Твір стане доступним після підтвердження модератором.
                     </span>

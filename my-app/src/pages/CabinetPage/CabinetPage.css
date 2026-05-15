@@ -257,6 +257,32 @@
   margin-top: 0;
 }
 
+.cabinet__work-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.cabinet__link--secondary {
+  background: #2d2d2d;
+}
+
+.cabinet__delete {
+  width: fit-content;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border: 1px solid #ca0707;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.cabinet__delete:hover {
+  background: #ca0707;
+}
+
 @media (max-width: 760px) {
   .cabinet__header,
   .cabinet__section-header,

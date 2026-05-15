@@ -1,45 +1,23 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { getAllPublishedWorks } from "../../utils/worksStorage";
 import worksData from "../../data/works.json";
+import {
+  COMMENTS_STORAGE_KEY,
+  getAllPublishedWorks,
+  getWorkRatingStats,
+  readFromStorage,
+  writeToStorage,
+} from "../../utils/worksStorage";
 import "./WorkDetailsPage.css";
 
 const FAVORITES_STORAGE_KEY = "favoriteWorks";
-const COMMENTS_STORAGE_KEY = "workComments";
-
-/**
- * Безпечно отримує JSON-дані з localStorage.
- *
- * @param {string} key - Ключ localStorage
- * @param {Object|Array|string|number|boolean|null} fallback - Значення за замовчуванням
- * @returns {Object|Array|string|number|boolean|null} Дані з localStorage або fallback
- */
-function readFromStorage(key, fallback) {
-  try {
-    const savedValue = localStorage.getItem(key);
-    return savedValue ? JSON.parse(savedValue) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-/**
- * Записує JSON-дані у localStorage.
- *
- * @param {string} key - Ключ localStorage
- * @param {Object|Array|string|number|boolean|null} value - Значення для збереження
- * @returns {void}
- */
-function writeToStorage(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
 
 /**
  * Розбиває текст сторінки на абзаци.
  *
- * @param {string} text - Текст сторінки твору
- * @returns {JSX.Element[]} Масив абзаців
+ * @param {string} text - Текст сторінки твору.
+ * @returns {JSX.Element[]} Масив абзаців.
  */
 function renderParagraphs(text) {
   return text
@@ -51,16 +29,40 @@ function renderParagraphs(text) {
 /**
  * Повертає коментарі для конкретного твору.
  *
- * @param {Object.<string, Array>} commentsByWork - Об'єкт коментарів
- * @param {number|string} workId - ID твору
- * @returns {Array} Масив коментарів твору
+ * @param {Object.<string, Array>} commentsByWork - Об'єкт коментарів.
+ * @param {number|string} workId - ID твору.
+ * @returns {Array} Масив коментарів твору.
  */
 function getWorkComments(commentsByWork, workId) {
   return commentsByWork[String(workId)] || [];
 }
 
 /**
+ * Повертає повне ім'я користувача.
+ *
+ * @param {Object|null} user - Дані користувача.
+ * @returns {string} Повне ім'я або логін користувача.
+ */
+function getCommentAuthor(user) {
+  return `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.login;
+}
+
+/**
+ * Повертає стабільний ID користувача для коментарів і лайків.
+ *
+ * @param {Object|null} user - Дані користувача.
+ * @returns {string} ID користувача.
+ */
+function getCurrentUserId(user) {
+  return String(user.id || user.login || user.email);
+}
+
+/**
  * Сторінка детального перегляду твору.
+ *
+ * Містить інформацію про твір, читання по сторінках,
+ * додавання в обране, коментарі з оцінками, редагування коментарів,
+ * лайки та автоматичний рейтинг.
  *
  * @function WorkDetailsPage
  * @returns {JSX.Element}
@@ -81,6 +83,10 @@ export default function WorkDetailsPage() {
 
   const [commentText, setCommentText] = useState("");
   const [commentRating, setCommentRating] = useState("5");
+
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingText, setEditingText] = useState("");
+  const [editingRating, setEditingRating] = useState("5");
 
   const allWorks = useMemo(() => {
     return getAllPublishedWorks(worksData);
@@ -105,18 +111,31 @@ export default function WorkDetailsPage() {
   const pageText = pages[currentPage] || "Текст твору поки не додано.";
   const isFavorite = favoriteIds.includes(work.id);
   const workComments = getWorkComments(commentsByWork, work.id);
+  const ratingStats = getWorkRatingStats(work, commentsByWork);
 
   const isAuthorized = Boolean(user);
-
-  const commentAuthor = isAuthorized
-    ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.login
-    : "";
-
-  const currentUserId = isAuthorized ? user.id || user.login || user.email : "";
+  const commentAuthor = isAuthorized ? getCommentAuthor(user) : "";
+  const currentUserId = isAuthorized ? getCurrentUserId(user) : "";
 
   const hasUserCommented = workComments.some(
     (comment) => comment.userId === currentUserId,
   );
+
+  /**
+   * Оновлює список коментарів для поточного твору.
+   *
+   * @param {Array} updatedWorkComments - Оновлені коментарі твору.
+   * @returns {void}
+   */
+  const saveWorkComments = (updatedWorkComments) => {
+    const updatedCommentsByWork = {
+      ...commentsByWork,
+      [work.id]: updatedWorkComments,
+    };
+
+    setCommentsByWork(updatedCommentsByWork);
+    writeToStorage(COMMENTS_STORAGE_KEY, updatedCommentsByWork);
+  };
 
   /**
    * Перемикає стан твору в обраному.
@@ -175,19 +194,103 @@ export default function WorkDetailsPage() {
       author: commentAuthor,
       text: normalizedText,
       rating: Number(commentRating),
+      likedBy: [],
       createdAt: new Date().toLocaleDateString("uk-UA"),
+      updatedAt: "",
     };
 
-    const updatedCommentsByWork = {
-      ...commentsByWork,
-      [work.id]: [...workComments, newComment],
-    };
-
-    setCommentsByWork(updatedCommentsByWork);
-    writeToStorage(COMMENTS_STORAGE_KEY, updatedCommentsByWork);
+    saveWorkComments([...workComments, newComment]);
 
     setCommentText("");
     setCommentRating("5");
+  };
+
+  /**
+   * Вмикає режим редагування власного коментаря.
+   *
+   * @param {Object} comment - Коментар для редагування.
+   * @returns {void}
+   */
+  const startEditingComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingText(comment.text);
+    setEditingRating(String(comment.rating));
+  };
+
+  /**
+   * Скасовує редагування коментаря.
+   *
+   * @returns {void}
+   */
+  const cancelEditingComment = () => {
+    setEditingCommentId(null);
+    setEditingText("");
+    setEditingRating("5");
+  };
+
+  /**
+   * Зберігає змінений коментар користувача.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
+   * @returns {void}
+   */
+  const handleEditSubmit = (event) => {
+    event.preventDefault();
+
+    const normalizedText = editingText.trim();
+
+    if (!normalizedText) {
+      return;
+    }
+
+    const updatedComments = workComments.map((comment) => {
+      const isOwnComment = comment.userId === currentUserId;
+      const isEditedComment = comment.id === editingCommentId;
+
+      if (!isOwnComment || !isEditedComment) {
+        return comment;
+      }
+
+      return {
+        ...comment,
+        text: normalizedText,
+        rating: Number(editingRating),
+        updatedAt: new Date().toLocaleDateString("uk-UA"),
+      };
+    });
+
+    saveWorkComments(updatedComments);
+    cancelEditingComment();
+  };
+
+  /**
+   * Додає або прибирає лайк з коментаря.
+   *
+   * @param {number|string} commentId - ID коментаря.
+   * @returns {void}
+   */
+  const toggleCommentLike = (commentId) => {
+    if (!isAuthorized) {
+      return;
+    }
+
+    const updatedComments = workComments.map((comment) => {
+      if (comment.id !== commentId) {
+        return comment;
+      }
+
+      const likedBy = comment.likedBy || [];
+      const isLiked = likedBy.includes(currentUserId);
+
+      return {
+        ...comment,
+        likedBy: isLiked
+          ? likedBy.filter((userId) => userId !== currentUserId)
+          : [...likedBy, currentUserId],
+      };
+    });
+
+    saveWorkComments(updatedComments);
   };
 
   return (
@@ -211,7 +314,17 @@ export default function WorkDetailsPage() {
 
           <div className="work-details__meta">
             <span>{work.genre}</span>
-            <span>Рейтинг: {work.rating.toFixed(1)}</span>
+
+            <span>
+              Рейтинг:{" "}
+              {ratingStats.rating > 0 ? ratingStats.rating.toFixed(1) : "—"}
+            </span>
+
+            <span>
+              {ratingStats.ratingsCount > 0
+                ? `Оцінок користувачів: ${ratingStats.ratingsCount}`
+                : "Оцінок користувачів ще немає"}
+            </span>
           </div>
 
           <p className="work-details__description">{work.description}</p>
@@ -316,19 +429,117 @@ export default function WorkDetailsPage() {
           {workComments.length === 0 ? (
             <p className="comments__empty">Коментарів поки немає.</p>
           ) : (
-            workComments.map((comment) => (
-              <article className="comments__item" key={comment.id}>
-                <div className="comments__item-header">
-                  <strong>{comment.author}</strong>
-                  <span className="comments__item-rating">
-                    Оцінка: {comment.rating}/5
-                  </span>
-                </div>
+            workComments.map((comment) => {
+              const isOwnComment = comment.userId === currentUserId;
+              const isEditing = editingCommentId === comment.id;
+              const likedBy = comment.likedBy || [];
+              const isLikedByCurrentUser = likedBy.includes(currentUserId);
 
-                <p className="comments__item-text">{comment.text}</p>
-                <span className="comments__date">{comment.createdAt}</span>
-              </article>
-            ))
+              return (
+                <article className="comments__item" key={comment.id}>
+                  <div className="comments__item-header">
+                    <strong>{comment.author}</strong>
+
+                    <span className="comments__item-rating">
+                      Оцінка: {comment.rating}/5
+                    </span>
+                  </div>
+
+                  {isEditing ? (
+                    <form
+                      className="comments__edit-form"
+                      onSubmit={handleEditSubmit}
+                    >
+                      <label className="comments__label">
+                        Нова оцінка
+                        <select
+                          className="comments__select"
+                          value={editingRating}
+                          onChange={(event) =>
+                            setEditingRating(event.target.value)
+                          }
+                        >
+                          <option value="5">5</option>
+                          <option value="4">4</option>
+                          <option value="3">3</option>
+                          <option value="2">2</option>
+                          <option value="1">1</option>
+                        </select>
+                      </label>
+
+                      <label className="comments__label">
+                        Новий коментар
+                        <textarea
+                          className="comments__textarea"
+                          value={editingText}
+                          onChange={(event) =>
+                            setEditingText(event.target.value)
+                          }
+                          rows="4"
+                        />
+                      </label>
+
+                      <div className="comments__actions">
+                        <button className="comments__submit" type="submit">
+                          Зберегти
+                        </button>
+
+                        <button
+                          className="comments__secondary-button"
+                          type="button"
+                          onClick={cancelEditingComment}
+                        >
+                          Скасувати
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <p className="comments__item-text">{comment.text}</p>
+
+                      <div className="comments__footer">
+                        <div className="comments__dates">
+                          <span className="comments__date">
+                            {comment.createdAt}
+                          </span>
+
+                          {comment.updatedAt && (
+                            <span className="comments__date">
+                              Змінено: {comment.updatedAt}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="comments__actions">
+                          <button
+                            className={`comments__like ${
+                              isLikedByCurrentUser
+                                ? "comments__like--active"
+                                : ""
+                            }`}
+                            type="button"
+                            onClick={() => toggleCommentLike(comment.id)}
+                            disabled={!isAuthorized}
+                          >
+                            👍 {likedBy.length}
+                          </button>
+
+                          {isOwnComment && (
+                            <button
+                              className="comments__secondary-button"
+                              type="button"
+                              onClick={() => startEditingComment(comment)}
+                            >
+                              Редагувати
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </article>
+              );
+            })
           )}
         </div>
       </section>
