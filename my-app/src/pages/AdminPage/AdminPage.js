@@ -43,6 +43,9 @@ export default function AdminPage() {
   );
 
   const [currentPagesByWork, setCurrentPagesByWork] = useState({});
+  const [rejectingWorkId, setRejectingWorkId] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionError, setRejectionError] = useState("");
 
   const pendingCount = useMemo(() => pendingWorks.length, [pendingWorks]);
 
@@ -129,6 +132,35 @@ export default function AdminPage() {
 
     writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
     writeToStorage(APPROVED_WORKS_STORAGE_KEY, updatedApprovedWorks);
+
+    if (rejectingWorkId === workId) {
+      setRejectingWorkId(null);
+      setRejectionReason("");
+      setRejectionError("");
+    }
+  };
+
+  /**
+   * Відкриває форму введення причини відхилення.
+   *
+   * @param {number|string} workId - ID твору.
+   * @returns {void}
+   */
+  const startRejectingWork = (workId) => {
+    setRejectingWorkId(workId);
+    setRejectionReason("");
+    setRejectionError("");
+  };
+
+  /**
+   * Скасовує відхилення твору.
+   *
+   * @returns {void}
+   */
+  const cancelRejectingWork = () => {
+    setRejectingWorkId(null);
+    setRejectionReason("");
+    setRejectionError("");
   };
 
   /**
@@ -137,19 +169,17 @@ export default function AdminPage() {
    * @param {number|string} workId - ID твору.
    * @returns {void}
    */
-  const rejectWork = (workId) => {
-    const workToReject = pendingWorks.find((work) => work.id === workId);
+  const confirmRejectWork = (workId) => {
+    const normalizedReason = rejectionReason.trim();
 
-    if (!workToReject) {
+    if (!normalizedReason) {
+      setRejectionError("Вкажіть причину відхилення твору.");
       return;
     }
 
-    const reason = window.prompt(
-      "Вкажіть причину відхилення твору:",
-      "Потрібно доопрацювати зміст або оформлення твору.",
-    );
+    const workToReject = pendingWorks.find((work) => work.id === workId);
 
-    if (reason === null) {
+    if (!workToReject) {
       return;
     }
 
@@ -157,7 +187,7 @@ export default function AdminPage() {
       ...workToReject,
       status: "rejected",
       rejectedAt: new Date().toLocaleDateString("uk-UA"),
-      rejectionReason: reason.trim() || "Причину не вказано.",
+      rejectionReason: normalizedReason,
     };
 
     const updatedPendingWorks = pendingWorks.filter(
@@ -171,6 +201,10 @@ export default function AdminPage() {
 
     writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
     writeToStorage(REJECTED_WORKS_STORAGE_KEY, updatedRejectedWorks);
+
+    setRejectingWorkId(null);
+    setRejectionReason("");
+    setRejectionError("");
   };
 
   return (
@@ -193,6 +227,7 @@ export default function AdminPage() {
             const pages = work.pages || [];
             const currentPage = getCurrentPage(work.id);
             const pageText = pages[currentPage] || "Текст твору відсутній.";
+            const isRejecting = rejectingWorkId === work.id;
 
             return (
               <article className="admin__work" key={work.id}>
@@ -251,23 +286,67 @@ export default function AdminPage() {
                     )}
                   </div>
 
-                  <div className="admin__actions">
-                    <button
-                      className="admin__button admin__button--approve"
-                      type="button"
-                      onClick={() => approveWork(work.id)}
-                    >
-                      Підтвердити
-                    </button>
+                  {isRejecting && (
+                    <div className="admin__reject-form">
+                      <label className="admin__reject-label">
+                        Причина відхилення
+                        <textarea
+                          className="admin__reject-textarea"
+                          value={rejectionReason}
+                          onChange={(event) => {
+                            setRejectionReason(event.target.value);
+                            setRejectionError("");
+                          }}
+                          placeholder="Наприклад: потрібно виправити оформлення, додати опис або доопрацювати текст."
+                          rows="4"
+                        />
+                      </label>
 
-                    <button
-                      className="admin__button admin__button--reject"
-                      type="button"
-                      onClick={() => rejectWork(work.id)}
-                    >
-                      Відхилити
-                    </button>
-                  </div>
+                      {rejectionError && (
+                        <p className="admin__reject-error">
+                          {rejectionError}
+                        </p>
+                      )}
+
+                      <div className="admin__reject-actions">
+                        <button
+                          className="admin__button admin__button--reject"
+                          type="button"
+                          onClick={() => confirmRejectWork(work.id)}
+                        >
+                          Підтвердити відхилення
+                        </button>
+
+                        <button
+                          className="admin__button admin__button--secondary"
+                          type="button"
+                          onClick={cancelRejectingWork}
+                        >
+                          Скасувати
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isRejecting && (
+                    <div className="admin__actions">
+                      <button
+                        className="admin__button admin__button--approve"
+                        type="button"
+                        onClick={() => approveWork(work.id)}
+                      >
+                        Підтвердити
+                      </button>
+
+                      <button
+                        className="admin__button admin__button--reject"
+                        type="button"
+                        onClick={() => startRejectingWork(work.id)}
+                      >
+                        Відхилити
+                      </button>
+                    </div>
+                  )}
                 </div>
               </article>
             );

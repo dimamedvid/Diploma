@@ -183,8 +183,53 @@
   background: #ca0707;
 }
 
+.admin__button--secondary {
+  border: 1px solid #333;
+  background: #2d2d2d;
+}
+
 .admin__button:hover {
   opacity: 0.92;
+}
+
+.admin__reject-form {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(202, 7, 7, 0.35);
+  border-radius: 14px;
+  background: rgba(202, 7, 7, 0.08);
+}
+
+.admin__reject-label {
+  display: grid;
+  gap: 8px;
+  color: #ddd;
+  font-size: 15px;
+}
+
+.admin__reject-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  background: #101010;
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.admin__reject-error {
+  margin: 0;
+  color: #ff8a8a;
+  font-size: 14px;
+}
+
+.admin__reject-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 760px) {
