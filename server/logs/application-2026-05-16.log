@@ -1,0 +1,6 @@
+2026-05-16 20:45:59 [INFO] [server] API running on http://localhost:4000 {"env":"development"}
+2026-05-16 20:49:11 [INFO] [request] HTTP request started {"requestId":"b0fa92ec-6a0b-4352-870a-1fb0cbd426b1","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-16 20:49:11 [INFO] [auth.routes] User login attempt {"requestId":"b0fa92ec-6a0b-4352-870a-1fb0cbd426b1","loginInput":"poto7"}
+2026-05-16 20:49:11 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-16 20:49:11 [INFO] [auth.routes] User login successful {"requestId":"b0fa92ec-6a0b-4352-870a-1fb0cbd426b1","userId":"1765592205256","login":"poto7","email":"dima.medvid.06@gmail.com","role":"moderator"}
+2026-05-16 20:49:11 [INFO] [request] HTTP request finished {"requestId":"b0fa92ec-6a0b-4352-870a-1fb0cbd426b1","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":67,"sessionType":"anonymous","userId":null,"role":null}

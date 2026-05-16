@@ -61,8 +61,8 @@ function getCurrentUserId(user) {
  * Сторінка детального перегляду твору.
  *
  * Містить інформацію про твір, читання по сторінках,
- * додавання в обране, коментарі з оцінками, редагування коментарів,
- * лайки та автоматичний рейтинг.
+ * додавання в обране, коментарі з оцінками, редагування,
+ * видалення коментарів, лайки та автоматичний рейтинг.
  *
  * @function WorkDetailsPage
  * @returns {JSX.Element}
@@ -291,6 +291,32 @@ export default function WorkDetailsPage() {
     });
 
     saveWorkComments(updatedComments);
+  };
+
+  /**
+   * Видаляє власний коментар користувача.
+   *
+   * @param {number|string} commentId - ID коментаря.
+   * @returns {void}
+   */
+  const deleteOwnComment = (commentId) => {
+    const shouldDelete = window.confirm(
+      "Ви впевнені, що хочете видалити цей коментар?",
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    const updatedComments = workComments.filter((comment) => {
+      return comment.id !== commentId || comment.userId !== currentUserId;
+    });
+
+    saveWorkComments(updatedComments);
+
+    if (editingCommentId === commentId) {
+      cancelEditingComment();
+    }
   };
 
   return (
@@ -525,13 +551,23 @@ export default function WorkDetailsPage() {
                           </button>
 
                           {isOwnComment && (
-                            <button
-                              className="comments__secondary-button"
-                              type="button"
-                              onClick={() => startEditingComment(comment)}
-                            >
-                              Редагувати
-                            </button>
+                            <>
+                              <button
+                                className="comments__secondary-button"
+                                type="button"
+                                onClick={() => startEditingComment(comment)}
+                              >
+                                Редагувати
+                              </button>
+
+                              <button
+                                className="comments__delete-button"
+                                type="button"
+                                onClick={() => deleteOwnComment(comment.id)}
+                              >
+                                Видалити
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>

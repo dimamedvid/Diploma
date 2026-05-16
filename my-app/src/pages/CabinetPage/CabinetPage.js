@@ -83,12 +83,16 @@ export default function CabinetPage() {
     readFromStorage(FAVORITE_GENRES_STORAGE_KEY, {}),
   );
 
+  const [commentsByWork, setCommentsByWork] = useState(() =>
+    readFromStorage(COMMENTS_STORAGE_KEY, {}),
+  );
+
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+  const [editingCommentRating, setEditingCommentRating] = useState("5");
+
   const favoriteIds = useMemo(() => {
     return readFromStorage(FAVORITES_STORAGE_KEY, []);
-  }, []);
-
-  const commentsByWork = useMemo(() => {
-    return readFromStorage(COMMENTS_STORAGE_KEY, {});
   }, []);
 
   const pendingWorks = useMemo(() => {
@@ -237,6 +241,115 @@ export default function CabinetPage() {
 
     writeToStorage(REJECTED_WORKS_STORAGE_KEY, updatedRejectedWorks);
     window.location.reload();
+  };
+
+  /**
+   * Вмикає режим редагування коментаря користувача.
+   *
+   * @param {Object} comment - Коментар користувача.
+   * @returns {void}
+   */
+  const startEditingComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.text);
+    setEditingCommentRating(String(comment.rating));
+  };
+
+  /**
+   * Скасовує редагування коментаря.
+   *
+   * @returns {void}
+   */
+  const cancelEditingComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText("");
+    setEditingCommentRating("5");
+  };
+
+  /**
+   * Зберігає оновлений список коментарів.
+   *
+   * @param {Object.<string, Array>} updatedCommentsByWork - Оновлені коментарі.
+   * @returns {void}
+   */
+  const saveCommentsByWork = (updatedCommentsByWork) => {
+    setCommentsByWork(updatedCommentsByWork);
+    writeToStorage(COMMENTS_STORAGE_KEY, updatedCommentsByWork);
+  };
+
+  /**
+   * Зберігає зміни коментаря з кабінету користувача.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
+   * @param {number|string} workId - ID твору.
+   * @param {number|string} commentId - ID коментаря.
+   * @returns {void}
+   */
+  const saveEditedComment = (event, workId, commentId) => {
+    event.preventDefault();
+
+    const normalizedText = editingCommentText.trim();
+
+    if (!normalizedText) {
+      return;
+    }
+
+    const workComments = commentsByWork[String(workId)] || [];
+
+    const updatedWorkComments = workComments.map((comment) => {
+      if (comment.id !== commentId || comment.userId !== userId) {
+        return comment;
+      }
+
+      return {
+        ...comment,
+        text: normalizedText,
+        rating: Number(editingCommentRating),
+        updatedAt: new Date().toLocaleDateString("uk-UA"),
+      };
+    });
+
+    const updatedCommentsByWork = {
+      ...commentsByWork,
+      [workId]: updatedWorkComments,
+    };
+
+    saveCommentsByWork(updatedCommentsByWork);
+    cancelEditingComment();
+  };
+
+  /**
+   * Видаляє коментар користувача.
+   *
+   * @param {number|string} workId - ID твору.
+   * @param {number|string} commentId - ID коментаря.
+   * @returns {void}
+   */
+  const deleteOwnComment = (workId, commentId) => {
+    const shouldDelete = window.confirm(
+      "Ви впевнені, що хочете видалити цей коментар?",
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    const workComments = commentsByWork[String(workId)] || [];
+
+    const updatedWorkComments = workComments.filter(
+      (comment) => comment.id !== commentId || comment.userId !== userId,
+    );
+
+    const updatedCommentsByWork = {
+      ...commentsByWork,
+      [workId]: updatedWorkComments,
+    };
+
+    saveCommentsByWork(updatedCommentsByWork);
+
+    if (editingCommentId === commentId) {
+      cancelEditingComment();
+    }
   };
 
   return (
@@ -493,31 +606,123 @@ export default function CabinetPage() {
           </p>
         ) : (
           <div className="cabinet__comments">
-            {userComments.map((comment) => (
-              <article className="cabinet__comment" key={comment.id}>
-                <div className="cabinet__comment-header">
-                  <div>
-                    <h3 className="cabinet__comment-title">
-                      {comment.workTitle}
-                    </h3>
-                    <p className="cabinet__comment-author">
-                      {comment.workAuthor}
-                    </p>
+            {userComments.map((comment) => {
+              const isEditing = editingCommentId === comment.id;
+
+              return (
+                <article className="cabinet__comment" key={comment.id}>
+                  <div className="cabinet__comment-header">
+                    <div>
+                      <h3 className="cabinet__comment-title">
+                        {comment.workTitle}
+                      </h3>
+                      <p className="cabinet__comment-author">
+                        {comment.workAuthor}
+                      </p>
+                    </div>
+
+                    <span className="cabinet__rating">
+                      Оцінка: {comment.rating}/5
+                    </span>
                   </div>
 
-                  <span className="cabinet__rating">
-                    Оцінка: {comment.rating}/5
-                  </span>
-                </div>
+                  {isEditing ? (
+                    <form
+                      className="cabinet__comment-edit-form"
+                      onSubmit={(event) =>
+                        saveEditedComment(event, comment.workId, comment.id)
+                      }
+                    >
+                      <label className="cabinet__comment-edit-label">
+                        Оцінка
+                        <select
+                          className="cabinet__comment-select"
+                          value={editingCommentRating}
+                          onChange={(event) =>
+                            setEditingCommentRating(event.target.value)
+                          }
+                        >
+                          <option value="5">5</option>
+                          <option value="4">4</option>
+                          <option value="3">3</option>
+                          <option value="2">2</option>
+                          <option value="1">1</option>
+                        </select>
+                      </label>
 
-                <p className="cabinet__comment-text">{comment.text}</p>
-                <span className="cabinet__date">{comment.createdAt}</span>
+                      <label className="cabinet__comment-edit-label">
+                        Коментар
+                        <textarea
+                          className="cabinet__comment-textarea"
+                          value={editingCommentText}
+                          onChange={(event) =>
+                            setEditingCommentText(event.target.value)
+                          }
+                          rows="4"
+                        />
+                      </label>
 
-                <Link className="cabinet__link" to={`/works/${comment.workId}`}>
-                  Перейти до твору
-                </Link>
-              </article>
-            ))}
+                      <div className="cabinet__comment-edit-actions">
+                        <button className="cabinet__comment-save" type="submit">
+                          Зберегти
+                        </button>
+
+                        <button
+                          className="cabinet__delete"
+                          type="button"
+                          onClick={cancelEditingComment}
+                        >
+                          Скасувати
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <p className="cabinet__comment-text">{comment.text}</p>
+
+                      <div className="cabinet__comment-meta">
+                        <span className="cabinet__date">
+                          {comment.createdAt}
+                        </span>
+
+                        {comment.updatedAt && (
+                          <span className="cabinet__date">
+                            Змінено: {comment.updatedAt}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="cabinet__comment-actions">
+                        <Link
+                          className="cabinet__link"
+                          to={`/works/${comment.workId}`}
+                        >
+                          Перейти до твору
+                        </Link>
+
+                        <button
+                          className="cabinet__comment-button"
+                          type="button"
+                          onClick={() => startEditingComment(comment)}
+                        >
+                          Редагувати
+                        </button>
+
+                        <button
+                          className="cabinet__delete"
+                          type="button"
+                          onClick={() =>
+                            deleteOwnComment(comment.workId, comment.id)
+                          }
+                        >
+                          Видалити
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

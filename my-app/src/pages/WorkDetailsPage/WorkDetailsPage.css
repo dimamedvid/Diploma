@@ -179,10 +179,15 @@
   font-size: 28px;
 }
 
-.comments__form {
+.comments__form,
+.comments__edit-form {
   display: grid;
   gap: 16px;
   margin-bottom: 28px;
+}
+
+.comments__edit-form {
+  margin-bottom: 0;
 }
 
 .comments__label {
@@ -286,11 +291,6 @@
   overflow-wrap: anywhere;
 }
 
-.comments__date {
-  color: #888;
-  font-size: 13px;
-}
-
 .comments__footer {
   display: flex;
   justify-content: space-between;
@@ -303,16 +303,16 @@
   gap: 4px;
 }
 
+.comments__date {
+  color: #888;
+  font-size: 13px;
+}
+
 .comments__actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   justify-content: flex-end;
-}
-
-.comments__edit-form {
-  display: grid;
-  gap: 16px;
 }
 
 .comments__secondary-button {
@@ -353,15 +353,18 @@
   cursor: not-allowed;
 }
 
-@media (max-width: 760px) {
-  .comments__footer {
-    align-items: flex-start;
-    flex-direction: column;
-  }
+.comments__delete-button {
+  width: fit-content;
+  padding: 10px 14px;
+  border: 1px solid #ca0707;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
 
-  .comments__actions {
-    justify-content: flex-start;
-  }
+.comments__delete-button:hover {
+  background: #ca0707;
 }
 
 @media (max-width: 760px) {
@@ -379,8 +382,13 @@
   }
 
   .reader__top,
-  .comments__item-header {
+  .comments__item-header,
+  .comments__footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .comments__actions {
+    justify-content: flex-start;
   }
 }

@@ -314,6 +314,9 @@
   background: #5a5aff;
   color: #fff;
   text-decoration: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
 }
 
 .cabinet__link:hover {
@@ -333,6 +336,7 @@
   background: transparent;
   color: #fff;
   cursor: pointer;
+  font-size: 16px;
 }
 
 .cabinet__delete:hover {
@@ -341,8 +345,7 @@
 
 .cabinet__comment {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px 18px;
+  gap: 14px;
   padding: 18px;
   border: 1px solid #2a2a2a;
   border-radius: 14px;
@@ -350,7 +353,6 @@
 }
 
 .cabinet__comment-header {
-  grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
   gap: 16px;
@@ -363,7 +365,6 @@
 }
 
 .cabinet__comment-text {
-  grid-column: 1 / 2;
   margin: 0;
   color: #ddd;
   line-height: 1.6;
@@ -371,20 +372,83 @@
   overflow-wrap: anywhere;
 }
 
+.cabinet__comment-meta {
+  display: grid;
+  gap: 4px;
+}
+
 .cabinet__date {
-  grid-column: 1 / 2;
   display: block;
   margin-bottom: 0;
   color: #888;
   font-size: 13px;
 }
 
-.cabinet__comment .cabinet__link {
-  grid-column: 2 / 3;
-  grid-row: 2 / 4;
-  align-self: end;
-  justify-self: end;
-  margin-top: 0;
+.cabinet__comment-actions,
+.cabinet__comment-edit-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cabinet__comment-button {
+  width: fit-content;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  background: #2d2d2d;
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.cabinet__comment-button:hover {
+  opacity: 0.92;
+}
+
+.cabinet__comment-edit-form {
+  display: grid;
+  gap: 16px;
+}
+
+.cabinet__comment-edit-label {
+  display: grid;
+  gap: 8px;
+  color: #ddd;
+  font-size: 15px;
+}
+
+.cabinet__comment-select,
+.cabinet__comment-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  background: #101010;
+  color: #fff;
+  font-size: 16px;
+}
+
+.cabinet__comment-textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.cabinet__comment-save {
+  width: fit-content;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #5a5aff;
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.cabinet__comment-save:hover {
+  opacity: 0.92;
 }
 
 @media (max-width: 760px) {
@@ -409,13 +473,8 @@
     height: 160px;
   }
 
-  .cabinet__comment {
-    grid-template-columns: 1fr;
-  }
-
-  .cabinet__comment .cabinet__link {
-    grid-column: 1;
-    grid-row: auto;
-    justify-self: start;
+  .cabinet__comment-actions,
+  .cabinet__comment-edit-actions {
+    justify-content: flex-start;
   }
 }
