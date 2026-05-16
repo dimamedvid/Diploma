@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import worksData from "../../data/works.json";
@@ -12,6 +12,7 @@ import {
 import "./WorkDetailsPage.css";
 
 const FAVORITES_STORAGE_KEY = "favoriteWorks";
+const READING_PROGRESS_STORAGE_KEY = "readingProgressByUser";
 
 /**
  * Розбиває текст сторінки на абзаци.
@@ -48,7 +49,7 @@ function getCommentAuthor(user) {
 }
 
 /**
- * Повертає стабільний ID користувача для коментарів і лайків.
+ * Повертає стабільний ID користувача.
  *
  * @param {Object|null} user - Дані користувача.
  * @returns {string} ID користувача.
@@ -58,11 +59,46 @@ function getCurrentUserId(user) {
 }
 
 /**
+ * Повертає збережений прогрес читання користувача.
+ *
+ * @param {string} userId - ID користувача.
+ * @param {number|string} workId - ID твору.
+ * @returns {number} Індекс останньої прочитаної сторінки.
+ */
+function getSavedReadingPage(userId, workId) {
+  const progressByUser = readFromStorage(READING_PROGRESS_STORAGE_KEY, {});
+
+  return Number(progressByUser[userId]?.[String(workId)] || 0);
+}
+
+/**
+ * Зберігає прогрес читання користувача.
+ *
+ * @param {string} userId - ID користувача.
+ * @param {number|string} workId - ID твору.
+ * @param {number} pageIndex - Індекс поточної сторінки.
+ * @returns {void}
+ */
+function saveReadingPage(userId, workId, pageIndex) {
+  const progressByUser = readFromStorage(READING_PROGRESS_STORAGE_KEY, {});
+
+  const updatedProgress = {
+    ...progressByUser,
+    [userId]: {
+      ...(progressByUser[userId] || {}),
+      [String(workId)]: pageIndex,
+    },
+  };
+
+  writeToStorage(READING_PROGRESS_STORAGE_KEY, updatedProgress);
+}
+
+/**
  * Сторінка детального перегляду твору.
  *
  * Містить інформацію про твір, читання по сторінках,
- * додавання в обране, коментарі з оцінками, редагування,
- * видалення коментарів, лайки та автоматичний рейтинг.
+ * збереження прогресу читання, обране, коментарі,
+ * редагування, видалення коментарів, лайки та рейтинг.
  *
  * @function WorkDetailsPage
  * @returns {JSX.Element}
@@ -96,6 +132,45 @@ export default function WorkDetailsPage() {
     return allWorks.find((item) => String(item.id) === String(id));
   }, [allWorks, id]);
 
+  const isAuthorized = Boolean(user);
+  const currentUserId = isAuthorized ? getCurrentUserId(user) : "";
+
+  const pages = work?.pages || [];
+  const pageText = pages[currentPage] || "Текст твору поки не додано.";
+  const isFavorite = work ? favoriteIds.includes(work.id) : false;
+  const workComments = work ? getWorkComments(commentsByWork, work.id) : [];
+  const ratingStats = work
+    ? getWorkRatingStats(work, commentsByWork)
+    : {
+      rating: 0,
+      ratingsCount: 0,
+    };
+
+  const commentAuthor = isAuthorized ? getCommentAuthor(user) : "";
+
+  const hasUserCommented = workComments.some(
+    (comment) => comment.userId === currentUserId,
+  );
+
+  useEffect(() => {
+    if (!work || !isAuthorized || pages.length === 0) {
+      return;
+    }
+
+    const savedPage = getSavedReadingPage(currentUserId, work.id);
+    const safePage = Math.min(savedPage, pages.length - 1);
+
+    setCurrentPage(safePage);
+  }, [work, isAuthorized, currentUserId, pages.length]);
+
+  useEffect(() => {
+    if (!work || !isAuthorized || pages.length === 0) {
+      return;
+    }
+
+    saveReadingPage(currentUserId, work.id, currentPage);
+  }, [work, isAuthorized, currentUserId, currentPage, pages.length]);
+
   if (!work) {
     return (
       <section className="work-details">
@@ -106,20 +181,6 @@ export default function WorkDetailsPage() {
       </section>
     );
   }
-
-  const pages = work.pages || [];
-  const pageText = pages[currentPage] || "Текст твору поки не додано.";
-  const isFavorite = favoriteIds.includes(work.id);
-  const workComments = getWorkComments(commentsByWork, work.id);
-  const ratingStats = getWorkRatingStats(work, commentsByWork);
-
-  const isAuthorized = Boolean(user);
-  const commentAuthor = isAuthorized ? getCommentAuthor(user) : "";
-  const currentUserId = isAuthorized ? getCurrentUserId(user) : "";
-
-  const hasUserCommented = workComments.some(
-    (comment) => comment.userId === currentUserId,
-  );
 
   /**
    * Оновлює список коментарів для поточного твору.

@@ -18,6 +18,7 @@ import "./CabinetPage.css";
 
 const FAVORITES_STORAGE_KEY = "favoriteWorks";
 const FAVORITE_GENRES_STORAGE_KEY = "favoriteGenresByUser";
+const READING_PROGRESS_STORAGE_KEY = "readingProgressByUser";
 const MAX_FAVORITE_GENRES = 3;
 
 /**
@@ -65,10 +66,46 @@ function getUserFavoriteGenres(favoriteGenresByUser, userId) {
 }
 
 /**
+ * Повертає список творів, які користувач уже починав читати.
+ *
+ * @param {Object[]} works - Опубліковані твори.
+ * @param {Object.<string, Object>} readingProgressByUser - Дані прогресу читання.
+ * @param {string} userId - ID користувача.
+ * @returns {Object[]} Список творів із прогресом.
+ */
+function getContinueReadingWorks(works, readingProgressByUser, userId) {
+  const userProgress = readingProgressByUser[userId] || {};
+
+  return Object.entries(userProgress)
+    .map(([workId, pageIndex]) => {
+      const work = works.find((item) => String(item.id) === String(workId));
+
+      if (!work) {
+        return null;
+      }
+
+      const pagesCount = work.pages?.length || 0;
+      const safePageIndex = Math.min(
+        Number(pageIndex),
+        Math.max(pagesCount - 1, 0),
+      );
+
+      return {
+        ...work,
+        currentPage: safePageIndex,
+        pagesCount,
+      };
+    })
+    .filter(Boolean)
+    .filter((work) => work.pagesCount > 0)
+    .sort((firstWork, secondWork) => Number(secondWork.id) - Number(firstWork.id));
+}
+
+/**
  * Сторінка особистого кабінету авторизованого користувача.
  *
- * Відображає дані користувача, улюблені жанри, власні твори,
- * обране, коментарі та оцінки.
+ * Відображає дані користувача, прогрес читання, улюблені жанри,
+ * власні твори, обране, коментарі та оцінки.
  *
  * @returns {JSX.Element} Сторінка особистого кабінету.
  */
@@ -81,6 +118,10 @@ export default function CabinetPage() {
 
   const [favoriteGenresByUser, setFavoriteGenresByUser] = useState(() =>
     readFromStorage(FAVORITE_GENRES_STORAGE_KEY, {}),
+  );
+
+  const [readingProgressByUser, setReadingProgressByUser] = useState(() =>
+    readFromStorage(READING_PROGRESS_STORAGE_KEY, {}),
   );
 
   const [commentsByWork, setCommentsByWork] = useState(() =>
@@ -118,6 +159,12 @@ export default function CabinetPage() {
 
   const selectedFavoriteGenres = getUserFavoriteGenres(
     favoriteGenresByUser,
+    userId,
+  );
+
+  const continueReadingWorks = getContinueReadingWorks(
+    allPublishedWorks,
+    readingProgressByUser,
     userId,
   );
 
@@ -197,6 +244,30 @@ export default function CabinetPage() {
 
     setFavoriteGenresByUser(updatedFavoriteGenresByUser);
     writeToStorage(FAVORITE_GENRES_STORAGE_KEY, updatedFavoriteGenresByUser);
+  };
+
+  /**
+   * Видаляє твір зі списку "Продовжити читання".
+   *
+   * Сам твір не видаляється, очищується тільки прогрес читання користувача.
+   *
+   * @param {number|string} workId - ID твору.
+   * @returns {void}
+   */
+  const deleteReadingProgress = (workId) => {
+    const updatedUserProgress = {
+      ...(readingProgressByUser[userId] || {}),
+    };
+
+    delete updatedUserProgress[String(workId)];
+
+    const updatedReadingProgressByUser = {
+      ...readingProgressByUser,
+      [userId]: updatedUserProgress,
+    };
+
+    setReadingProgressByUser(updatedReadingProgressByUser);
+    writeToStorage(READING_PROGRESS_STORAGE_KEY, updatedReadingProgressByUser);
   };
 
   /**
@@ -359,7 +430,8 @@ export default function CabinetPage() {
           <div>
             <h1 className="cabinet__title">Особистий кабінет</h1>
             <p className="cabinet__subtitle">
-              Тут зібрані ваші дані, власні твори, обране та залишені оцінки.
+              Тут зібрані ваші дані, прогрес читання, власні твори, обране та
+              залишені оцінки.
             </p>
           </div>
 
@@ -428,6 +500,52 @@ export default function CabinetPage() {
             })}
           </div>
         </div>
+      </section>
+
+      <section className="cabinet__section">
+        <div className="cabinet__section-header">
+          <h2 className="cabinet__section-title">Продовжити читання</h2>
+        </div>
+
+        {continueReadingWorks.length === 0 ? (
+          <p className="cabinet__empty">Ви ще не починали читати твори.</p>
+        ) : (
+          <div className="cabinet__list">
+            {continueReadingWorks.map((work) => (
+              <article className="cabinet__work" key={work.id}>
+                <img
+                  className="cabinet__work-cover"
+                  src={work.cover}
+                  alt={work.title}
+                />
+
+                <div className="cabinet__work-info">
+                  <h3 className="cabinet__work-title">{work.title}</h3>
+                  <p className="cabinet__work-author">{work.author}</p>
+
+                  <p className="cabinet__work-description">
+                    Ви зупинилися на сторінці {work.currentPage + 1} з{" "}
+                    {work.pagesCount}.
+                  </p>
+
+                  <div className="cabinet__work-actions">
+                    <Link className="cabinet__link" to={`/works/${work.id}`}>
+                      Продовжити читання
+                    </Link>
+
+                    <button
+                      className="cabinet__delete"
+                      type="button"
+                      onClick={() => deleteReadingProgress(work.id)}
+                    >
+                      Прибрати
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="cabinet__section">
