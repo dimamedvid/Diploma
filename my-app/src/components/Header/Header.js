@@ -5,7 +5,7 @@ import icon from "../../assets/icon.png";
 import "./Header.css";
 
 /**
- * Перевіряє, чи користувач має доступ до сторінки модерації.
+ * Перевіряє, чи користувач має доступ до сторінок модерації.
  *
  * @param {Object|null} user - Дані поточного користувача.
  * @returns {boolean} true, якщо користувач є адміністратором або модератором.
@@ -18,7 +18,7 @@ function canUserModerate(user) {
  * Верхня панель навігації застосунку.
  *
  * Відображає логотип, основні посилання, кнопки авторизації,
- * кабінет користувача та посилання на модерацію для користувачів
+ * кабінет користувача, модерацію та статистику для користувачів
  * з відповідною роллю.
  *
  * @returns {JSX.Element} Header застосунку.
@@ -51,9 +51,15 @@ export default function Header() {
           </Link>
 
           {canModerate && (
-            <Link className="header__link" to="/admin">
-              Модерація
-            </Link>
+            <>
+              <Link className="header__link" to="/admin">
+                Модерація
+              </Link>
+
+              <Link className="header__link" to="/admin/stats">
+                Статистика
+              </Link>
+            </>
           )}
         </nav>
 

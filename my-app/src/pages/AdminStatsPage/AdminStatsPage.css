@@ -1,0 +1,152 @@
+.admin-stats {
+  padding: 40px 0;
+  display: grid;
+  gap: 24px;
+}
+
+.admin-stats__card,
+.admin-stats__section {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  background: #181818;
+}
+
+.admin-stats__title {
+  margin: 0 0 8px;
+  color: #fff;
+  font-size: 32px;
+}
+
+.admin-stats__subtitle {
+  margin: 0;
+  color: #aaa;
+  line-height: 1.6;
+}
+
+.admin-stats__grid {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.admin-stats__metric {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid #2a2a2a;
+  border-radius: 14px;
+  background: #101010;
+}
+
+.admin-stats__metric span {
+  color: #aaa;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.admin-stats__metric strong {
+  color: #fff;
+  font-size: 30px;
+}
+
+.admin-stats__columns {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.admin-stats__section-title {
+  margin: 0 0 18px;
+  color: #fff;
+  font-size: 24px;
+}
+
+.admin-stats__empty {
+  margin: 0;
+  color: #aaa;
+}
+
+.admin-stats__list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-stats__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #101010;
+  color: #ddd;
+}
+
+.admin-stats__row span {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.admin-stats__row strong {
+  color: #fff;
+}
+
+.admin-stats__table {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-stats__table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 12px;
+  background: #101010;
+  color: #ddd;
+}
+
+.admin-stats__table-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-stats__table-row strong {
+  color: #fff;
+}
+
+.admin-stats__table-row span {
+  color: #aaa;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .admin-stats__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-stats__columns {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-stats__table-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-stats__grid {
+    grid-template-columns: 1fr;
+  }
+}

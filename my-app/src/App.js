@@ -9,6 +9,7 @@ import CreateWorkPage from "./pages/CreateWorkPage/CreateWorkPage";
 import EditWorkPage from "./pages/EditWorkPage/EditWorkPage";
 import Header from "./components/Header/Header";
 import AdminPage from "./pages/AdminPage/AdminPage";
+import AdminStatsPage from "./pages/AdminStatsPage/AdminStatsPage";
 import Footer from "./components/Footer/Footer";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import AdminRoute from "./auth/AdminRoute";
@@ -19,7 +20,7 @@ import "./App.css";
  * Головний компонент застосунку.
  *
  * Визначає основні маршрути, layout застосунку,
- * захищені сторінки користувача та захищену сторінку модерації.
+ * захищені сторінки користувача та захищені сторінки модерації.
  *
  * @returns {JSX.Element} Основна структура застосунку.
  */
@@ -58,6 +59,15 @@ export default function App() {
               element={
                 <AdminRoute>
                   <AdminPage />
+                </AdminRoute>
+              }
+            />
+
+            <Route
+              path="/admin/stats"
+              element={
+                <AdminRoute>
+                  <AdminStatsPage />
                 </AdminRoute>
               }
             />
