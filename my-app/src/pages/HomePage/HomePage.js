@@ -31,26 +31,88 @@ function getFavoriteGenresForUser(user) {
 }
 
 /**
- * Сортує твори так, щоб твори з улюблених жанрів користувача були першими.
+ * Перевіряє, чи твір відповідає пошуковому запиту.
+ *
+ * Пошук виконується за назвою, автором, жанром і описом.
+ *
+ * @param {Object} work - Твір.
+ * @param {string} query - Пошуковий запит.
+ * @returns {boolean} true, якщо твір відповідає запиту.
+ */
+function doesWorkMatchQuery(work, query) {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const searchableText = [
+    work.title,
+    work.author,
+    work.genre,
+    work.description,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return searchableText.includes(normalizedQuery);
+}
+
+/**
+ * Повертає часову мітку твору для сортування.
+ *
+ * Для користувацьких творів використовується id, бо він створюється через Date.now().
+ * Для базових творів використовується id з works.json.
+ *
+ * @param {Object} work - Твір.
+ * @returns {number} Числове значення для сортування.
+ */
+function getWorkDateValue(work) {
+  return Number(work.id) || 0;
+}
+
+/**
+ * Сортує твори за вибраним критерієм.
  *
  * @param {Object[]} works - Список творів.
+ * @param {string} sortOption - Тип сортування.
  * @param {string[]} favoriteGenres - Улюблені жанри користувача.
  * @returns {Object[]} Відсортований список творів.
  */
-function sortWorksByFavoriteGenres(works, favoriteGenres) {
-  if (favoriteGenres.length === 0) {
-    return works;
-  }
-
+function sortWorks(works, sortOption, favoriteGenres) {
   return [...works].sort((firstWork, secondWork) => {
-    const firstMatches = favoriteGenres.includes(firstWork.genre);
-    const secondMatches = favoriteGenres.includes(secondWork.genre);
+    if (sortOption === "recommended") {
+      const firstMatches = favoriteGenres.includes(firstWork.genre);
+      const secondMatches = favoriteGenres.includes(secondWork.genre);
 
-    if (firstMatches === secondMatches) {
-      return 0;
+      if (firstMatches !== secondMatches) {
+        return firstMatches ? -1 : 1;
+      }
+
+      return Number(secondWork.rating || 0) - Number(firstWork.rating || 0);
     }
 
-    return firstMatches ? -1 : 1;
+    if (sortOption === "rating-desc") {
+      return Number(secondWork.rating || 0) - Number(firstWork.rating || 0);
+    }
+
+    if (sortOption === "title-asc") {
+      return firstWork.title.localeCompare(secondWork.title, "uk");
+    }
+
+    if (sortOption === "author-asc") {
+      return firstWork.author.localeCompare(secondWork.author, "uk");
+    }
+
+    if (sortOption === "newest") {
+      return getWorkDateValue(secondWork) - getWorkDateValue(firstWork);
+    }
+
+    if (sortOption === "oldest") {
+      return getWorkDateValue(firstWork) - getWorkDateValue(secondWork);
+    }
+
+    return 0;
   });
 }
 
@@ -58,8 +120,8 @@ function sortWorksByFavoriteGenres(works, favoriteGenres) {
  * Головна сторінка каталогу творів.
  *
  * Відображає список опублікованих творів,
- * підтримує пошук, фільтрацію за жанром і рейтингом.
- * Якщо користувач обрав улюблені жанри, відповідні твори показуються першими.
+ * підтримує пошук, фільтрацію за жанром і рейтингом,
+ * персоналізоване сортування та додаткові варіанти сортування.
  *
  * @returns {JSX.Element} Головна сторінка з каталогом творів.
  */
@@ -70,6 +132,7 @@ export default function HomePage() {
   const [genre, setGenre] = useState("Всі жанри");
   const [ratingMin, setRatingMin] = useState("0");
   const [ratingMax, setRatingMax] = useState("5");
+  const [sortOption, setSortOption] = useState("recommended");
 
   const favoriteGenres = useMemo(() => {
     return getFavoriteGenresForUser(user);
@@ -77,10 +140,9 @@ export default function HomePage() {
 
   const allWorks = useMemo(() => {
     const publishedWorks = getAllPublishedWorks(worksData);
-    const worksWithRating = enrichWorksWithRating(publishedWorks);
 
-    return sortWorksByFavoriteGenres(worksWithRating, favoriteGenres);
-  }, [favoriteGenres]);
+    return enrichWorksWithRating(publishedWorks);
+  }, []);
 
   const genres = useMemo(() => {
     const uniqueGenres = [...new Set(allWorks.map((work) => work.genre))];
@@ -89,18 +151,19 @@ export default function HomePage() {
   }, [allWorks]);
 
   const filteredWorks = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const min = Number(ratingMin);
     const max = Number(ratingMax);
 
-    return allWorks.filter(
+    const filtered = allWorks.filter(
       (work) =>
-        work.title.toLowerCase().includes(q) &&
+        doesWorkMatchQuery(work, query) &&
         (genre === "Всі жанри" || work.genre === genre) &&
         work.rating >= min &&
         work.rating <= max,
     );
-  }, [allWorks, query, genre, ratingMin, ratingMax]);
+
+    return sortWorks(filtered, sortOption, favoriteGenres);
+  }, [allWorks, query, genre, ratingMin, ratingMax, sortOption, favoriteGenres]);
 
   return (
     <section className="home">
@@ -114,10 +177,22 @@ export default function HomePage() {
         onRatingMinChange={setRatingMin}
         ratingMax={ratingMax}
         onRatingMaxChange={setRatingMax}
+        sortOption={sortOption}
+        onSortOptionChange={setSortOption}
       />
 
       <div className="results">
-        <h2 className="results__title">Результати пошуку</h2>
+        <div>
+          <h2 className="results__title">Результати пошуку</h2>
+
+          {favoriteGenres.length > 0 && sortOption === "recommended" && (
+            <p className="results__hint">
+              Спочатку показуються твори з ваших улюблених жанрів:{" "}
+              {favoriteGenres.join(", ")}.
+            </p>
+          )}
+        </div>
+
         <span className="results__count">Знайдено: {filteredWorks.length}</span>
       </div>
 
