@@ -9,134 +9,14 @@ import {
   readFromStorage,
   writeToStorage,
 } from "../../utils/worksStorage";
+import {
+  MIN_CONTENT_LENGTH,
+  hasTooLongWords,
+  isValidCoverUrl,
+  joinPagesForEditing,
+  splitTextIntoPages,
+} from "../../utils/textPagination";
 import "./EditWorkPage.css";
-
-const PAGE_SIZE = 3500;
-const MAX_WORD_LENGTH = 120;
-const MIN_CONTENT_LENGTH = 300;
-
-/**
- * Перевіряє, чи містить текст надто довгі фрагменти без пробілів.
- *
- * @param {string} rawText - Текст твору.
- * @returns {boolean} true, якщо знайдено надто довгий фрагмент.
- */
-function hasTooLongWords(rawText) {
-  return rawText
-    .split(/\s+/)
-    .some((word) => word.length > MAX_WORD_LENGTH);
-}
-
-/**
- * Перевіряє, чи є посилання коректним URL для обкладинки.
- *
- * @param {string} url - Посилання на обкладинку.
- * @returns {boolean} true, якщо URL порожній або починається з http/https.
- */
-function isValidCoverUrl(url) {
-  const normalizedUrl = url.trim();
-
-  if (!normalizedUrl) {
-    return true;
-  }
-
-  return (
-    normalizedUrl.startsWith("http://") ||
-    normalizedUrl.startsWith("https://")
-  );
-}
-
-/**
- * Автоматично розбиває текст твору на сторінки.
- *
- * @param {string} rawText - Повний текст твору.
- * @returns {string[]} Масив сторінок твору.
- */
-function splitTextAutomatically(rawText) {
-  const paragraphs = rawText
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-
-  const pages = [];
-  let currentPage = "";
-
-  /**
-   * Додає частину тексту до сторінки.
-   *
-   * @param {string} textPart - Частина тексту.
-   * @returns {void}
-   */
-  const addTextPart = (textPart) => {
-    const nextPage = currentPage
-      ? `${currentPage}\n\n${textPart}`
-      : textPart;
-
-    if (nextPage.length > PAGE_SIZE && currentPage) {
-      pages.push(currentPage);
-      currentPage = textPart;
-      return;
-    }
-
-    if (textPart.length > PAGE_SIZE) {
-      const words = textPart.split(/\s+/);
-      let chunk = "";
-
-      words.forEach((word) => {
-        const nextChunk = chunk ? `${chunk} ${word}` : word;
-
-        if (nextChunk.length > PAGE_SIZE && chunk) {
-          pages.push(chunk);
-          chunk = word;
-        } else {
-          chunk = nextChunk;
-        }
-      });
-
-      currentPage = chunk;
-      return;
-    }
-
-    currentPage = nextPage;
-  };
-
-  paragraphs.forEach((paragraph) => {
-    addTextPart(paragraph);
-  });
-
-  if (currentPage) {
-    pages.push(currentPage);
-  }
-
-  return pages;
-}
-
-/**
- * Розбиває текст твору на сторінки.
- *
- * @param {string} rawText - Повний текст твору.
- * @returns {string[]} Масив сторінок.
- */
-function splitTextIntoPages(rawText) {
-  if (rawText.includes("---")) {
-    return rawText
-      .split("---")
-      .map((page) => page.trim())
-      .filter(Boolean);
-  }
-
-  return splitTextAutomatically(rawText);
-}
-
-/**
- * Об'єднує сторінки твору в один текст для редагування.
- *
- * @param {string[]} pages - Сторінки твору.
- * @returns {string} Повний текст твору.
- */
-function joinPagesForEditing(pages) {
-  return pages.join("\n\n---\n\n");
-}
 
 /**
  * Розбиває текст сторінки на абзаци.
@@ -202,6 +82,9 @@ function findUserWork(workId, pendingWorks, approvedWorks, rejectedWorks) {
 
 /**
  * Сторінка редагування власного твору.
+ *
+ * Якщо редагується опублікований або відхилений твір,
+ * після збереження він знову потрапляє на модерацію.
  *
  * @returns {JSX.Element} Форма редагування твору.
  */

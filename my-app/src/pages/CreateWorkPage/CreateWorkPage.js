@@ -8,127 +8,16 @@ import {
   readFromStorage,
   writeToStorage,
 } from "../../utils/worksStorage";
+import {
+  MIN_CONTENT_LENGTH,
+  hasTooLongWords,
+  isValidCoverUrl,
+  splitTextIntoPages,
+} from "../../utils/textPagination";
 import "./CreateWorkPage.css";
 
 const DEFAULT_COVER =
   "https://upload.wikimedia.org/wikipedia/commons/6/65/No-Image-Placeholder.svg";
-
-const PAGE_SIZE = 3500;
-const MAX_WORD_LENGTH = 120;
-const MIN_CONTENT_LENGTH = 300;
-
-/**
- * Перевіряє, чи містить текст надто довгі фрагменти без пробілів.
- *
- * @param {string} rawText - Текст твору.
- * @returns {boolean} true, якщо знайдено надто довгий фрагмент.
- */
-function hasTooLongWords(rawText) {
-  return rawText
-    .split(/\s+/)
-    .some((word) => word.length > MAX_WORD_LENGTH);
-}
-
-/**
- * Перевіряє, чи є посилання коректним URL для обкладинки.
- *
- * @param {string} url - Посилання на обкладинку.
- * @returns {boolean} true, якщо URL порожній або починається з http/https.
- */
-function isValidCoverUrl(url) {
-  const normalizedUrl = url.trim();
-
-  if (!normalizedUrl) {
-    return true;
-  }
-
-  return (
-    normalizedUrl.startsWith("http://") ||
-    normalizedUrl.startsWith("https://")
-  );
-}
-
-/**
- * Автоматично розбиває текст твору на сторінки.
- *
- * @param {string} rawText - Повний текст твору.
- * @returns {string[]} Масив сторінок твору.
- */
-function splitTextAutomatically(rawText) {
-  const paragraphs = rawText
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
-
-  const pages = [];
-  let currentPage = "";
-
-  /**
-   * Додає частину тексту до поточної сторінки або створює нову.
-   *
-   * @param {string} textPart - Частина тексту.
-   * @returns {void}
-   */
-  const addTextPart = (textPart) => {
-    const nextPage = currentPage
-      ? `${currentPage}\n\n${textPart}`
-      : textPart;
-
-    if (nextPage.length > PAGE_SIZE && currentPage) {
-      pages.push(currentPage);
-      currentPage = textPart;
-      return;
-    }
-
-    if (textPart.length > PAGE_SIZE) {
-      const words = textPart.split(/\s+/);
-      let chunk = "";
-
-      words.forEach((word) => {
-        const nextChunk = chunk ? `${chunk} ${word}` : word;
-
-        if (nextChunk.length > PAGE_SIZE && chunk) {
-          pages.push(chunk);
-          chunk = word;
-        } else {
-          chunk = nextChunk;
-        }
-      });
-
-      currentPage = chunk;
-      return;
-    }
-
-    currentPage = nextPage;
-  };
-
-  paragraphs.forEach((paragraph) => {
-    addTextPart(paragraph);
-  });
-
-  if (currentPage) {
-    pages.push(currentPage);
-  }
-
-  return pages;
-}
-
-/**
- * Розбиває текст твору на сторінки.
- *
- * @param {string} rawText - Повний текст із поля введення.
- * @returns {string[]} Масив сторінок твору.
- */
-function splitTextIntoPages(rawText) {
-  if (rawText.includes("---")) {
-    return rawText
-      .split("---")
-      .map((page) => page.trim())
-      .filter(Boolean);
-  }
-
-  return splitTextAutomatically(rawText);
-}
 
 /**
  * Розбиває текст сторінки на абзаци для попереднього перегляду.
@@ -145,6 +34,9 @@ function renderParagraphs(text) {
 
 /**
  * Сторінка створення нового твору користувачем.
+ *
+ * Дозволяє заповнити інформацію про твір, переглянути попередній результат,
+ * побачити кількість символів і сторінок, а потім відправити твір на модерацію.
  *
  * @returns {JSX.Element} Форма додавання нового твору.
  */

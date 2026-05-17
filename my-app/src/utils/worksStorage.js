@@ -1,7 +1,9 @@
-export const APPROVED_WORKS_STORAGE_KEY = "approvedWorks";
-export const PENDING_WORKS_STORAGE_KEY = "pendingWorks";
-export const REJECTED_WORKS_STORAGE_KEY = "rejectedWorks";
-export const COMMENTS_STORAGE_KEY = "workComments";
+import { STORAGE_KEYS } from "./storageKeys";
+
+export const APPROVED_WORKS_STORAGE_KEY = STORAGE_KEYS.APPROVED_WORKS;
+export const PENDING_WORKS_STORAGE_KEY = STORAGE_KEYS.PENDING_WORKS;
+export const REJECTED_WORKS_STORAGE_KEY = STORAGE_KEYS.REJECTED_WORKS;
+export const COMMENTS_STORAGE_KEY = STORAGE_KEYS.COMMENTS;
 
 /**
  * Безпечно отримує JSON-дані з localStorage.
