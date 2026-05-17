@@ -26,10 +26,13 @@ import {
   getContinueReadingWorks,
   saveAllReadingProgress,
 } from "../../utils/readingProgressStorage";
+import {
+  getFavoriteWorkIds,
+  getFavoriteWorks,
+} from "../../utils/favoritesStorage";
 import { STORAGE_KEYS } from "../../utils/storageKeys";
 import "./CabinetPage.css";
 
-const FAVORITES_STORAGE_KEY = STORAGE_KEYS.FAVORITES;
 const FAVORITE_GENRES_STORAGE_KEY = STORAGE_KEYS.FAVORITE_GENRES;
 const MAX_FAVORITE_GENRES = 3;
 
@@ -86,7 +89,7 @@ export default function CabinetPage() {
   const [editingCommentRating, setEditingCommentRating] = useState("5");
 
   const favoriteIds = useMemo(() => {
-    return readFromStorage(FAVORITES_STORAGE_KEY, []);
+    return getFavoriteWorkIds();
   }, []);
 
   const pendingWorks = useMemo(() => {
@@ -121,9 +124,7 @@ export default function CabinetPage() {
     userId,
   );
 
-  const favoriteWorks = allPublishedWorks.filter((work) =>
-    favoriteIds.includes(work.id),
-  );
+  const favoriteWorks = getFavoriteWorks(allPublishedWorks, favoriteIds);
 
   const userWorks = [
     ...pendingWorks

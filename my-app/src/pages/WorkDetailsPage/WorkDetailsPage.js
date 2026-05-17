@@ -5,8 +5,6 @@ import worksData from "../../data/works.json";
 import {
   getAllPublishedWorks,
   getWorkRatingStats,
-  readFromStorage,
-  writeToStorage,
 } from "../../utils/worksStorage";
 import {
   addCommentToWork,
@@ -23,10 +21,13 @@ import {
   getSavedReadingPage,
   saveReadingPage,
 } from "../../utils/readingProgressStorage";
-import { STORAGE_KEYS } from "../../utils/storageKeys";
+import {
+  getFavoriteWorkIds,
+  isWorkFavorite,
+  saveFavoriteWorkIds,
+  toggleFavoriteWork,
+} from "../../utils/favoritesStorage";
 import "./WorkDetailsPage.css";
-
-const FAVORITES_STORAGE_KEY = STORAGE_KEYS.FAVORITES;
 
 /**
  * Розбиває текст сторінки на абзаци.
@@ -67,9 +68,7 @@ export default function WorkDetailsPage() {
 
   const [currentPage, setCurrentPage] = useState(0);
 
-  const [favoriteIds, setFavoriteIds] = useState(() =>
-    readFromStorage(FAVORITES_STORAGE_KEY, []),
-  );
+  const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteWorkIds());
 
   const [commentsByWork, setCommentsByWork] = useState(() =>
     getAllCommentsByWork(),
@@ -95,7 +94,7 @@ export default function WorkDetailsPage() {
 
   const pages = work?.pages || [];
   const pageText = pages[currentPage] || "Текст твору поки не додано.";
-  const isFavorite = work ? favoriteIds.includes(work.id) : false;
+  const isFavorite = work ? isWorkFavorite(favoriteIds, work.id) : false;
   const workComments = work ? getWorkComments(commentsByWork, work.id) : [];
   const ratingStats = work
     ? getWorkRatingStats(work, commentsByWork)
@@ -158,12 +157,10 @@ export default function WorkDetailsPage() {
    * @returns {void}
    */
   const toggleFavorite = () => {
-    const updatedFavoriteIds = isFavorite
-      ? favoriteIds.filter((favoriteId) => favoriteId !== work.id)
-      : [...favoriteIds, work.id];
+    const updatedFavoriteIds = toggleFavoriteWork(favoriteIds, work.id);
 
     setFavoriteIds(updatedFavoriteIds);
-    writeToStorage(FAVORITES_STORAGE_KEY, updatedFavoriteIds);
+    saveFavoriteWorkIds(updatedFavoriteIds);
   };
 
   /**
