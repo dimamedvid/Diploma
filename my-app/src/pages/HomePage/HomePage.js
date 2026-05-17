@@ -6,29 +6,13 @@ import worksData from "../../data/works.json";
 import {
   enrichWorksWithRating,
   getAllPublishedWorks,
-  getUserId,
-  readFromStorage,
 } from "../../utils/worksStorage";
+import {
+  getAvailableGenres,
+  getFavoriteGenresForUser,
+  sortWorksByFavoriteGenres,
+} from "../../utils/favoriteGenresStorage";
 import "./HomePage.css";
-
-const FAVORITE_GENRES_STORAGE_KEY = "favoriteGenresByUser";
-
-/**
- * Повертає улюблені жанри поточного користувача.
- *
- * @param {Object|null} user - Дані поточного користувача.
- * @returns {string[]} Масив улюблених жанрів.
- */
-function getFavoriteGenresForUser(user) {
-  if (!user) {
-    return [];
-  }
-
-  const favoriteGenresByUser = readFromStorage(FAVORITE_GENRES_STORAGE_KEY, {});
-  const userId = getUserId(user);
-
-  return favoriteGenresByUser[userId] || [];
-}
 
 /**
  * Перевіряє, чи твір відповідає пошуковому запиту.
@@ -59,13 +43,10 @@ function doesWorkMatchQuery(work, query) {
 }
 
 /**
- * Повертає часову мітку твору для сортування.
- *
- * Для користувацьких творів використовується id, бо він створюється через Date.now().
- * Для базових творів використовується id з works.json.
+ * Повертає числове значення ID твору для сортування за новизною.
  *
  * @param {Object} work - Твір.
- * @returns {number} Числове значення для сортування.
+ * @returns {number} Числове значення ID.
  */
 function getWorkDateValue(work) {
   return Number(work.id) || 0;
@@ -80,18 +61,11 @@ function getWorkDateValue(work) {
  * @returns {Object[]} Відсортований список творів.
  */
 function sortWorks(works, sortOption, favoriteGenres) {
+  if (sortOption === "recommended") {
+    return sortWorksByFavoriteGenres(works, favoriteGenres);
+  }
+
   return [...works].sort((firstWork, secondWork) => {
-    if (sortOption === "recommended") {
-      const firstMatches = favoriteGenres.includes(firstWork.genre);
-      const secondMatches = favoriteGenres.includes(secondWork.genre);
-
-      if (firstMatches !== secondMatches) {
-        return firstMatches ? -1 : 1;
-      }
-
-      return Number(secondWork.rating || 0) - Number(firstWork.rating || 0);
-    }
-
     if (sortOption === "rating-desc") {
       return Number(secondWork.rating || 0) - Number(firstWork.rating || 0);
     }
@@ -145,9 +119,7 @@ export default function HomePage() {
   }, []);
 
   const genres = useMemo(() => {
-    const uniqueGenres = [...new Set(allWorks.map((work) => work.genre))];
-
-    return ["Всі жанри", ...uniqueGenres];
+    return ["Всі жанри", ...getAvailableGenres(allWorks)];
   }, [allWorks]);
 
   const filteredWorks = useMemo(() => {

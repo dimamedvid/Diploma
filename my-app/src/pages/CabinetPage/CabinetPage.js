@@ -30,32 +30,15 @@ import {
   getFavoriteWorkIds,
   getFavoriteWorks,
 } from "../../utils/favoritesStorage";
-import { STORAGE_KEYS } from "../../utils/storageKeys";
+import {
+  MAX_FAVORITE_GENRES,
+  getAvailableGenres,
+  getFavoriteGenresByUser,
+  getUserFavoriteGenres,
+  saveFavoriteGenresByUser,
+  toggleFavoriteGenreForUser,
+} from "../../utils/favoriteGenresStorage";
 import "./CabinetPage.css";
-
-const FAVORITE_GENRES_STORAGE_KEY = STORAGE_KEYS.FAVORITE_GENRES;
-const MAX_FAVORITE_GENRES = 3;
-
-/**
- * Повертає список усіх жанрів з опублікованих творів.
- *
- * @param {Object[]} works - Список творів.
- * @returns {string[]} Список унікальних жанрів.
- */
-function getAvailableGenres(works) {
-  return [...new Set(works.map((work) => work.genre))];
-}
-
-/**
- * Повертає улюблені жанри конкретного користувача.
- *
- * @param {Object.<string, string[]>} favoriteGenresByUser - Дані жанрів.
- * @param {string} userId - ID користувача.
- * @returns {string[]} Улюблені жанри користувача.
- */
-function getUserFavoriteGenres(favoriteGenresByUser, userId) {
-  return favoriteGenresByUser[userId] || [];
-}
 
 /**
  * Сторінка особистого кабінету авторизованого користувача.
@@ -73,7 +56,7 @@ export default function CabinetPage() {
   const [worksFilter, setWorksFilter] = useState("all");
 
   const [favoriteGenresByUser, setFavoriteGenresByUser] = useState(() =>
-    readFromStorage(FAVORITE_GENRES_STORAGE_KEY, {}),
+    getFavoriteGenresByUser(),
   );
 
   const [readingProgressByUser, setReadingProgressByUser] = useState(() =>
@@ -192,23 +175,14 @@ export default function CabinetPage() {
    * @returns {void}
    */
   const toggleFavoriteGenre = (genre) => {
-    const isSelected = selectedFavoriteGenres.includes(genre);
-
-    if (!isSelected && selectedFavoriteGenres.length >= MAX_FAVORITE_GENRES) {
-      return;
-    }
-
-    const updatedGenres = isSelected
-      ? selectedFavoriteGenres.filter((selectedGenre) => selectedGenre !== genre)
-      : [...selectedFavoriteGenres, genre];
-
-    const updatedFavoriteGenresByUser = {
-      ...favoriteGenresByUser,
-      [userId]: updatedGenres,
-    };
+    const updatedFavoriteGenresByUser = toggleFavoriteGenreForUser(
+      favoriteGenresByUser,
+      userId,
+      genre,
+    );
 
     setFavoriteGenresByUser(updatedFavoriteGenresByUser);
-    writeToStorage(FAVORITE_GENRES_STORAGE_KEY, updatedFavoriteGenresByUser);
+    saveFavoriteGenresByUser(updatedFavoriteGenresByUser);
   };
 
   /**
