@@ -3,16 +3,27 @@ import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import worksData from "../../data/works.json";
 import {
-  COMMENTS_STORAGE_KEY,
   getAllPublishedWorks,
   getWorkRatingStats,
   readFromStorage,
   writeToStorage,
 } from "../../utils/worksStorage";
+import {
+  addCommentToWork,
+  deleteOwnCommentFromWork,
+  editOwnComment,
+  getAllCommentsByWork,
+  getCommentAuthor,
+  getWorkComments,
+  hasUserCommentedWork,
+  saveAllCommentsByWork,
+  toggleCommentLikeByUser,
+} from "../../utils/commentsStorage";
+import { STORAGE_KEYS } from "../../utils/storageKeys";
 import "./WorkDetailsPage.css";
 
-const FAVORITES_STORAGE_KEY = "favoriteWorks";
-const READING_PROGRESS_STORAGE_KEY = "readingProgressByUser";
+const FAVORITES_STORAGE_KEY = STORAGE_KEYS.FAVORITES;
+const READING_PROGRESS_STORAGE_KEY = STORAGE_KEYS.READING_PROGRESS;
 
 /**
  * Розбиває текст сторінки на абзаци.
@@ -25,27 +36,6 @@ function renderParagraphs(text) {
     .split("\n\n")
     .filter(Boolean)
     .map((paragraph, index) => <p key={index}>{paragraph}</p>);
-}
-
-/**
- * Повертає коментарі для конкретного твору.
- *
- * @param {Object.<string, Array>} commentsByWork - Об'єкт коментарів.
- * @param {number|string} workId - ID твору.
- * @returns {Array} Масив коментарів твору.
- */
-function getWorkComments(commentsByWork, workId) {
-  return commentsByWork[String(workId)] || [];
-}
-
-/**
- * Повертає повне ім'я користувача.
- *
- * @param {Object|null} user - Дані користувача.
- * @returns {string} Повне ім'я або логін користувача.
- */
-function getCommentAuthor(user) {
-  return `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.login;
 }
 
 /**
@@ -114,7 +104,7 @@ export default function WorkDetailsPage() {
   );
 
   const [commentsByWork, setCommentsByWork] = useState(() =>
-    readFromStorage(COMMENTS_STORAGE_KEY, {}),
+    getAllCommentsByWork(),
   );
 
   const [commentText, setCommentText] = useState("");
@@ -148,8 +138,9 @@ export default function WorkDetailsPage() {
 
   const commentAuthor = isAuthorized ? getCommentAuthor(user) : "";
 
-  const hasUserCommented = workComments.some(
-    (comment) => comment.userId === currentUserId,
+  const hasUserCommented = hasUserCommentedWork(
+    workComments,
+    currentUserId,
   );
 
   useEffect(() => {
@@ -183,19 +174,14 @@ export default function WorkDetailsPage() {
   }
 
   /**
-   * Оновлює список коментарів для поточного твору.
+   * Зберігає оновлений об'єкт коментарів.
    *
-   * @param {Array} updatedWorkComments - Оновлені коментарі твору.
+   * @param {Object.<string, Array>} updatedCommentsByWork - Оновлені коментарі.
    * @returns {void}
    */
-  const saveWorkComments = (updatedWorkComments) => {
-    const updatedCommentsByWork = {
-      ...commentsByWork,
-      [work.id]: updatedWorkComments,
-    };
-
+  const saveComments = (updatedCommentsByWork) => {
     setCommentsByWork(updatedCommentsByWork);
-    writeToStorage(COMMENTS_STORAGE_KEY, updatedCommentsByWork);
+    saveAllCommentsByWork(updatedCommentsByWork);
   };
 
   /**
@@ -260,7 +246,13 @@ export default function WorkDetailsPage() {
       updatedAt: "",
     };
 
-    saveWorkComments([...workComments, newComment]);
+    const updatedCommentsByWork = addCommentToWork(
+      commentsByWork,
+      work.id,
+      newComment,
+    );
+
+    saveComments(updatedCommentsByWork);
 
     setCommentText("");
     setCommentRating("5");
@@ -304,23 +296,16 @@ export default function WorkDetailsPage() {
       return;
     }
 
-    const updatedComments = workComments.map((comment) => {
-      const isOwnComment = comment.userId === currentUserId;
-      const isEditedComment = comment.id === editingCommentId;
+    const updatedCommentsByWork = editOwnComment(
+      commentsByWork,
+      work.id,
+      editingCommentId,
+      currentUserId,
+      normalizedText,
+      editingRating,
+    );
 
-      if (!isOwnComment || !isEditedComment) {
-        return comment;
-      }
-
-      return {
-        ...comment,
-        text: normalizedText,
-        rating: Number(editingRating),
-        updatedAt: new Date().toLocaleDateString("uk-UA"),
-      };
-    });
-
-    saveWorkComments(updatedComments);
+    saveComments(updatedCommentsByWork);
     cancelEditingComment();
   };
 
@@ -335,23 +320,14 @@ export default function WorkDetailsPage() {
       return;
     }
 
-    const updatedComments = workComments.map((comment) => {
-      if (comment.id !== commentId) {
-        return comment;
-      }
+    const updatedCommentsByWork = toggleCommentLikeByUser(
+      commentsByWork,
+      work.id,
+      commentId,
+      currentUserId,
+    );
 
-      const likedBy = comment.likedBy || [];
-      const isLiked = likedBy.includes(currentUserId);
-
-      return {
-        ...comment,
-        likedBy: isLiked
-          ? likedBy.filter((userId) => userId !== currentUserId)
-          : [...likedBy, currentUserId],
-      };
-    });
-
-    saveWorkComments(updatedComments);
+    saveComments(updatedCommentsByWork);
   };
 
   /**
@@ -369,11 +345,14 @@ export default function WorkDetailsPage() {
       return;
     }
 
-    const updatedComments = workComments.filter((comment) => {
-      return comment.id !== commentId || comment.userId !== currentUserId;
-    });
+    const updatedCommentsByWork = deleteOwnCommentFromWork(
+      commentsByWork,
+      work.id,
+      commentId,
+      currentUserId,
+    );
 
-    saveWorkComments(updatedComments);
+    saveComments(updatedCommentsByWork);
 
     if (editingCommentId === commentId) {
       cancelEditingComment();

@@ -5,7 +5,6 @@ import worksData from "../../data/works.json";
 import { logout } from "../../store/authSlice";
 import {
   APPROVED_WORKS_STORAGE_KEY,
-  COMMENTS_STORAGE_KEY,
   PENDING_WORKS_STORAGE_KEY,
   REJECTED_WORKS_STORAGE_KEY,
   getAllPublishedWorks,
@@ -14,35 +13,20 @@ import {
   readFromStorage,
   writeToStorage,
 } from "../../utils/worksStorage";
+import {
+  deleteOwnCommentFromWork,
+  editOwnComment,
+  getAllCommentsByWork,
+  getUserComments,
+  saveAllCommentsByWork,
+} from "../../utils/commentsStorage";
+import { STORAGE_KEYS } from "../../utils/storageKeys";
 import "./CabinetPage.css";
 
-const FAVORITES_STORAGE_KEY = "favoriteWorks";
-const FAVORITE_GENRES_STORAGE_KEY = "favoriteGenresByUser";
-const READING_PROGRESS_STORAGE_KEY = "readingProgressByUser";
+const FAVORITES_STORAGE_KEY = STORAGE_KEYS.FAVORITES;
+const FAVORITE_GENRES_STORAGE_KEY = STORAGE_KEYS.FAVORITE_GENRES;
+const READING_PROGRESS_STORAGE_KEY = STORAGE_KEYS.READING_PROGRESS;
 const MAX_FAVORITE_GENRES = 3;
-
-/**
- * Повертає коментарі поточного користувача до творів.
- *
- * @param {Object[]} works - Список творів.
- * @param {Object.<string, Array>} commentsByWork - Коментарі за ID твору.
- * @param {string} userId - ID поточного користувача.
- * @returns {Object[]} Список коментарів користувача.
- */
-function getUserComments(works, commentsByWork, userId) {
-  return works.flatMap((work) => {
-    const comments = commentsByWork[String(work.id)] || [];
-
-    return comments
-      .filter((comment) => comment.userId === userId)
-      .map((comment) => ({
-        ...comment,
-        workId: work.id,
-        workTitle: work.title,
-        workAuthor: work.author,
-      }));
-  });
-}
 
 /**
  * Повертає список усіх жанрів з опублікованих творів.
@@ -125,7 +109,7 @@ export default function CabinetPage() {
   );
 
   const [commentsByWork, setCommentsByWork] = useState(() =>
-    readFromStorage(COMMENTS_STORAGE_KEY, {}),
+    getAllCommentsByWork(),
   );
 
   const [editingCommentId, setEditingCommentId] = useState(null);
@@ -218,6 +202,17 @@ export default function CabinetPage() {
   const onLogout = () => {
     dispatch(logout());
     navigate("/login");
+  };
+
+  /**
+   * Зберігає оновлений об'єкт коментарів.
+   *
+   * @param {Object.<string, Array>} updatedCommentsByWork - Оновлені коментарі.
+   * @returns {void}
+   */
+  const saveComments = (updatedCommentsByWork) => {
+    setCommentsByWork(updatedCommentsByWork);
+    saveAllCommentsByWork(updatedCommentsByWork);
   };
 
   /**
@@ -338,17 +333,6 @@ export default function CabinetPage() {
   };
 
   /**
-   * Зберігає оновлений список коментарів.
-   *
-   * @param {Object.<string, Array>} updatedCommentsByWork - Оновлені коментарі.
-   * @returns {void}
-   */
-  const saveCommentsByWork = (updatedCommentsByWork) => {
-    setCommentsByWork(updatedCommentsByWork);
-    writeToStorage(COMMENTS_STORAGE_KEY, updatedCommentsByWork);
-  };
-
-  /**
    * Зберігає зміни коментаря з кабінету користувача.
    *
    * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
@@ -365,27 +349,16 @@ export default function CabinetPage() {
       return;
     }
 
-    const workComments = commentsByWork[String(workId)] || [];
+    const updatedCommentsByWork = editOwnComment(
+      commentsByWork,
+      workId,
+      commentId,
+      userId,
+      normalizedText,
+      editingCommentRating,
+    );
 
-    const updatedWorkComments = workComments.map((comment) => {
-      if (comment.id !== commentId || comment.userId !== userId) {
-        return comment;
-      }
-
-      return {
-        ...comment,
-        text: normalizedText,
-        rating: Number(editingCommentRating),
-        updatedAt: new Date().toLocaleDateString("uk-UA"),
-      };
-    });
-
-    const updatedCommentsByWork = {
-      ...commentsByWork,
-      [workId]: updatedWorkComments,
-    };
-
-    saveCommentsByWork(updatedCommentsByWork);
+    saveComments(updatedCommentsByWork);
     cancelEditingComment();
   };
 
@@ -405,18 +378,14 @@ export default function CabinetPage() {
       return;
     }
 
-    const workComments = commentsByWork[String(workId)] || [];
-
-    const updatedWorkComments = workComments.filter(
-      (comment) => comment.id !== commentId || comment.userId !== userId,
+    const updatedCommentsByWork = deleteOwnCommentFromWork(
+      commentsByWork,
+      workId,
+      commentId,
+      userId,
     );
 
-    const updatedCommentsByWork = {
-      ...commentsByWork,
-      [workId]: updatedWorkComments,
-    };
-
-    saveCommentsByWork(updatedCommentsByWork);
+    saveComments(updatedCommentsByWork);
 
     if (editingCommentId === commentId) {
       cancelEditingComment();
@@ -503,9 +472,7 @@ export default function CabinetPage() {
       </section>
 
       <section className="cabinet__section">
-        <div className="cabinet__section-header">
-          <h2 className="cabinet__section-title">Продовжити читання</h2>
-        </div>
+        <h2 className="cabinet__section-title">Продовжити читання</h2>
 
         {continueReadingWorks.length === 0 ? (
           <p className="cabinet__empty">Ви ще не починали читати твори.</p>
