@@ -19,11 +19,14 @@ import {
   saveAllCommentsByWork,
   toggleCommentLikeByUser,
 } from "../../utils/commentsStorage";
+import {
+  getSavedReadingPage,
+  saveReadingPage,
+} from "../../utils/readingProgressStorage";
 import { STORAGE_KEYS } from "../../utils/storageKeys";
 import "./WorkDetailsPage.css";
 
 const FAVORITES_STORAGE_KEY = STORAGE_KEYS.FAVORITES;
-const READING_PROGRESS_STORAGE_KEY = STORAGE_KEYS.READING_PROGRESS;
 
 /**
  * Розбиває текст сторінки на абзаци.
@@ -46,41 +49,6 @@ function renderParagraphs(text) {
  */
 function getCurrentUserId(user) {
   return String(user.id || user.login || user.email);
-}
-
-/**
- * Повертає збережений прогрес читання користувача.
- *
- * @param {string} userId - ID користувача.
- * @param {number|string} workId - ID твору.
- * @returns {number} Індекс останньої прочитаної сторінки.
- */
-function getSavedReadingPage(userId, workId) {
-  const progressByUser = readFromStorage(READING_PROGRESS_STORAGE_KEY, {});
-
-  return Number(progressByUser[userId]?.[String(workId)] || 0);
-}
-
-/**
- * Зберігає прогрес читання користувача.
- *
- * @param {string} userId - ID користувача.
- * @param {number|string} workId - ID твору.
- * @param {number} pageIndex - Індекс поточної сторінки.
- * @returns {void}
- */
-function saveReadingPage(userId, workId, pageIndex) {
-  const progressByUser = readFromStorage(READING_PROGRESS_STORAGE_KEY, {});
-
-  const updatedProgress = {
-    ...progressByUser,
-    [userId]: {
-      ...(progressByUser[userId] || {}),
-      [String(workId)]: pageIndex,
-    },
-  };
-
-  writeToStorage(READING_PROGRESS_STORAGE_KEY, updatedProgress);
 }
 
 /**

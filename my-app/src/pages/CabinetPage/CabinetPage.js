@@ -20,12 +20,17 @@ import {
   getUserComments,
   saveAllCommentsByWork,
 } from "../../utils/commentsStorage";
+import {
+  deleteReadingProgressByWork,
+  getAllReadingProgress,
+  getContinueReadingWorks,
+  saveAllReadingProgress,
+} from "../../utils/readingProgressStorage";
 import { STORAGE_KEYS } from "../../utils/storageKeys";
 import "./CabinetPage.css";
 
 const FAVORITES_STORAGE_KEY = STORAGE_KEYS.FAVORITES;
 const FAVORITE_GENRES_STORAGE_KEY = STORAGE_KEYS.FAVORITE_GENRES;
-const READING_PROGRESS_STORAGE_KEY = STORAGE_KEYS.READING_PROGRESS;
 const MAX_FAVORITE_GENRES = 3;
 
 /**
@@ -50,42 +55,6 @@ function getUserFavoriteGenres(favoriteGenresByUser, userId) {
 }
 
 /**
- * Повертає список творів, які користувач уже починав читати.
- *
- * @param {Object[]} works - Опубліковані твори.
- * @param {Object.<string, Object>} readingProgressByUser - Дані прогресу читання.
- * @param {string} userId - ID користувача.
- * @returns {Object[]} Список творів із прогресом.
- */
-function getContinueReadingWorks(works, readingProgressByUser, userId) {
-  const userProgress = readingProgressByUser[userId] || {};
-
-  return Object.entries(userProgress)
-    .map(([workId, pageIndex]) => {
-      const work = works.find((item) => String(item.id) === String(workId));
-
-      if (!work) {
-        return null;
-      }
-
-      const pagesCount = work.pages?.length || 0;
-      const safePageIndex = Math.min(
-        Number(pageIndex),
-        Math.max(pagesCount - 1, 0),
-      );
-
-      return {
-        ...work,
-        currentPage: safePageIndex,
-        pagesCount,
-      };
-    })
-    .filter(Boolean)
-    .filter((work) => work.pagesCount > 0)
-    .sort((firstWork, secondWork) => Number(secondWork.id) - Number(firstWork.id));
-}
-
-/**
  * Сторінка особистого кабінету авторизованого користувача.
  *
  * Відображає дані користувача, прогрес читання, улюблені жанри,
@@ -105,7 +74,7 @@ export default function CabinetPage() {
   );
 
   const [readingProgressByUser, setReadingProgressByUser] = useState(() =>
-    readFromStorage(READING_PROGRESS_STORAGE_KEY, {}),
+    getAllReadingProgress(),
   );
 
   const [commentsByWork, setCommentsByWork] = useState(() =>
@@ -250,19 +219,14 @@ export default function CabinetPage() {
    * @returns {void}
    */
   const deleteReadingProgress = (workId) => {
-    const updatedUserProgress = {
-      ...(readingProgressByUser[userId] || {}),
-    };
-
-    delete updatedUserProgress[String(workId)];
-
-    const updatedReadingProgressByUser = {
-      ...readingProgressByUser,
-      [userId]: updatedUserProgress,
-    };
+    const updatedReadingProgressByUser = deleteReadingProgressByWork(
+      readingProgressByUser,
+      userId,
+      workId,
+    );
 
     setReadingProgressByUser(updatedReadingProgressByUser);
-    writeToStorage(READING_PROGRESS_STORAGE_KEY, updatedReadingProgressByUser);
+    saveAllReadingProgress(updatedReadingProgressByUser);
   };
 
   /**
