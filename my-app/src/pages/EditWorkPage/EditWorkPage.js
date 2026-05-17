@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { getUserId } from "../../utils/worksStorage";
 import {
-  APPROVED_WORKS_STORAGE_KEY,
-  PENDING_WORKS_STORAGE_KEY,
-  REJECTED_WORKS_STORAGE_KEY,
-  getUserId,
-  readFromStorage,
-  writeToStorage,
-} from "../../utils/worksStorage";
+  findWorkForEditing,
+  getApprovedWorks,
+  getPendingWorks,
+  getRejectedWorks,
+  moveEditedWorkToPending,
+  saveAllModerationWorks,
+} from "../../utils/moderationStorage";
 import {
   MIN_CONTENT_LENGTH,
   hasTooLongWords,
@@ -32,55 +33,6 @@ function renderParagraphs(text) {
 }
 
 /**
- * Шукає твір серед творів на модерації, опублікованих і відхилених.
- *
- * @param {number|string} workId - ID твору.
- * @param {Object[]} pendingWorks - Твори на модерації.
- * @param {Object[]} approvedWorks - Опубліковані твори.
- * @param {Object[]} rejectedWorks - Відхилені твори.
- * @returns {{ work: Object|null, source: string }} Знайдений твір і джерело.
- */
-function findUserWork(workId, pendingWorks, approvedWorks, rejectedWorks) {
-  const pendingWork = pendingWorks.find(
-    (work) => String(work.id) === String(workId),
-  );
-
-  if (pendingWork) {
-    return {
-      work: pendingWork,
-      source: "pending",
-    };
-  }
-
-  const approvedWork = approvedWorks.find(
-    (work) => String(work.id) === String(workId),
-  );
-
-  if (approvedWork) {
-    return {
-      work: approvedWork,
-      source: "approved",
-    };
-  }
-
-  const rejectedWork = rejectedWorks.find(
-    (work) => String(work.id) === String(workId),
-  );
-
-  if (rejectedWork) {
-    return {
-      work: rejectedWork,
-      source: "rejected",
-    };
-  }
-
-  return {
-    work: null,
-    source: "",
-  };
-}
-
-/**
  * Сторінка редагування власного твору.
  *
  * Якщо редагується опублікований або відхилений твір,
@@ -95,20 +47,12 @@ export default function EditWorkPage() {
 
   const userId = getUserId(user);
 
-  const pendingWorks = useMemo(() => {
-    return readFromStorage(PENDING_WORKS_STORAGE_KEY, []);
-  }, []);
-
-  const approvedWorks = useMemo(() => {
-    return readFromStorage(APPROVED_WORKS_STORAGE_KEY, []);
-  }, []);
-
-  const rejectedWorks = useMemo(() => {
-    return readFromStorage(REJECTED_WORKS_STORAGE_KEY, []);
-  }, []);
+  const pendingWorks = useMemo(() => getPendingWorks(), []);
+  const approvedWorks = useMemo(() => getApprovedWorks(), []);
+  const rejectedWorks = useMemo(() => getRejectedWorks(), []);
 
   const { work, source } = useMemo(() => {
-    return findUserWork(id, pendingWorks, approvedWorks, rejectedWorks);
+    return findWorkForEditing(id, pendingWorks, approvedWorks, rejectedWorks);
   }, [id, pendingWorks, approvedWorks, rejectedWorks]);
 
   const [title, setTitle] = useState(work?.title || "");
@@ -221,50 +165,24 @@ export default function EditWorkPage() {
       rejectionReason: "",
     };
 
-    if (source === "pending") {
-      const updatedPendingWorks = pendingWorks.map((pendingWork) =>
-        pendingWork.id === work.id ? updatedWork : pendingWork,
-      );
+    const {
+      updatedPendingWorks,
+      updatedApprovedWorks,
+      updatedRejectedWorks,
+    } = moveEditedWorkToPending({
+      work,
+      updatedWork,
+      source,
+      pendingWorks,
+      approvedWorks,
+      rejectedWorks,
+    });
 
-      writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
-      navigate("/cabinet");
-      return;
-    }
-
-    if (source === "rejected") {
-      const updatedRejectedWorks = rejectedWorks.filter(
-        (rejectedWork) => rejectedWork.id !== work.id,
-      );
-
-      const updatedPendingWorks = [
-        ...pendingWorks,
-        {
-          ...updatedWork,
-          submittedAt: new Date().toLocaleDateString("uk-UA"),
-        },
-      ];
-
-      writeToStorage(REJECTED_WORKS_STORAGE_KEY, updatedRejectedWorks);
-      writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
-
-      navigate("/cabinet");
-      return;
-    }
-
-    const updatedApprovedWorks = approvedWorks.filter(
-      (approvedWork) => approvedWork.id !== work.id,
+    saveAllModerationWorks(
+      updatedPendingWorks,
+      updatedApprovedWorks,
+      updatedRejectedWorks,
     );
-
-    const updatedPendingWorks = [
-      ...pendingWorks,
-      {
-        ...updatedWork,
-        submittedAt: new Date().toLocaleDateString("uk-UA"),
-      },
-    ];
-
-    writeToStorage(APPROVED_WORKS_STORAGE_KEY, updatedApprovedWorks);
-    writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
 
     navigate("/cabinet");
   };

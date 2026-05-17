@@ -4,14 +4,9 @@ import { Link, useNavigate } from "react-router-dom";
 import worksData from "../../data/works.json";
 import { logout } from "../../store/authSlice";
 import {
-  APPROVED_WORKS_STORAGE_KEY,
-  PENDING_WORKS_STORAGE_KEY,
-  REJECTED_WORKS_STORAGE_KEY,
   getAllPublishedWorks,
   getUserFullName,
   getUserId,
-  readFromStorage,
-  writeToStorage,
 } from "../../utils/worksStorage";
 import {
   deleteOwnCommentFromWork,
@@ -38,6 +33,14 @@ import {
   saveFavoriteGenresByUser,
   toggleFavoriteGenreForUser,
 } from "../../utils/favoriteGenresStorage";
+import {
+  deleteUserWorkByStatus,
+  getApprovedWorks,
+  getPendingWorks,
+  getRejectedWorks,
+  getUserWorksByStatus,
+  saveAllModerationWorks,
+} from "../../utils/moderationStorage";
 import "./CabinetPage.css";
 
 /**
@@ -67,24 +70,18 @@ export default function CabinetPage() {
     getAllCommentsByWork(),
   );
 
+  const [pendingWorks, setPendingWorks] = useState(() => getPendingWorks());
+  const [approvedUserWorks, setApprovedUserWorks] = useState(() =>
+    getApprovedWorks(),
+  );
+  const [rejectedWorks, setRejectedWorks] = useState(() => getRejectedWorks());
+
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState("");
   const [editingCommentRating, setEditingCommentRating] = useState("5");
 
   const favoriteIds = useMemo(() => {
     return getFavoriteWorkIds();
-  }, []);
-
-  const pendingWorks = useMemo(() => {
-    return readFromStorage(PENDING_WORKS_STORAGE_KEY, []);
-  }, []);
-
-  const approvedUserWorks = useMemo(() => {
-    return readFromStorage(APPROVED_WORKS_STORAGE_KEY, []);
-  }, []);
-
-  const rejectedWorks = useMemo(() => {
-    return readFromStorage(REJECTED_WORKS_STORAGE_KEY, []);
   }, []);
 
   const allPublishedWorks = useMemo(() => {
@@ -109,29 +106,12 @@ export default function CabinetPage() {
 
   const favoriteWorks = getFavoriteWorks(allPublishedWorks, favoriteIds);
 
-  const userWorks = [
-    ...pendingWorks
-      .filter((work) => work.authorId === userId)
-      .map((work) => ({
-        ...work,
-        displayStatus: "На модерації",
-        statusType: "pending",
-      })),
-    ...approvedUserWorks
-      .filter((work) => work.authorId === userId)
-      .map((work) => ({
-        ...work,
-        displayStatus: "Опубліковано",
-        statusType: "approved",
-      })),
-    ...rejectedWorks
-      .filter((work) => work.authorId === userId)
-      .map((work) => ({
-        ...work,
-        displayStatus: "Відхилено",
-        statusType: "rejected",
-      })),
-  ];
+  const userWorks = getUserWorksByStatus(
+    userId,
+    pendingWorks,
+    approvedUserWorks,
+    rejectedWorks,
+  );
 
   const filteredUserWorks = userWorks.filter((work) => {
     if (worksFilter === "all") {
@@ -220,32 +200,27 @@ export default function CabinetPage() {
       return;
     }
 
-    if (statusType === "pending") {
-      const updatedPendingWorks = pendingWorks.filter(
-        (work) => work.id !== workId,
-      );
+    const {
+      updatedPendingWorks,
+      updatedApprovedWorks,
+      updatedRejectedWorks,
+    } = deleteUserWorkByStatus({
+      workId,
+      statusType,
+      pendingWorks,
+      approvedWorks: approvedUserWorks,
+      rejectedWorks,
+    });
 
-      writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
-      window.location.reload();
-      return;
-    }
+    setPendingWorks(updatedPendingWorks);
+    setApprovedUserWorks(updatedApprovedWorks);
+    setRejectedWorks(updatedRejectedWorks);
 
-    if (statusType === "approved") {
-      const updatedApprovedWorks = approvedUserWorks.filter(
-        (work) => work.id !== workId,
-      );
-
-      writeToStorage(APPROVED_WORKS_STORAGE_KEY, updatedApprovedWorks);
-      window.location.reload();
-      return;
-    }
-
-    const updatedRejectedWorks = rejectedWorks.filter(
-      (work) => work.id !== workId,
+    saveAllModerationWorks(
+      updatedPendingWorks,
+      updatedApprovedWorks,
+      updatedRejectedWorks,
     );
-
-    writeToStorage(REJECTED_WORKS_STORAGE_KEY, updatedRejectedWorks);
-    window.location.reload();
   };
 
   /**

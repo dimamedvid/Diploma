@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import {
-  APPROVED_WORKS_STORAGE_KEY,
-  PENDING_WORKS_STORAGE_KEY,
-  REJECTED_WORKS_STORAGE_KEY,
-  readFromStorage,
-  writeToStorage,
-} from "../../utils/worksStorage";
+  approveWorkById,
+  getApprovedWorks,
+  getPendingWorks,
+  getRejectedWorks,
+  rejectWorkById,
+  saveApprovedWorks,
+  savePendingWorks,
+  saveRejectedWorks,
+} from "../../utils/moderationStorage";
 import "./AdminPage.css";
 
 /**
@@ -30,17 +33,9 @@ function renderParagraphs(text) {
  * @returns {JSX.Element} Сторінка адміністратора/модератора.
  */
 export default function AdminPage() {
-  const [pendingWorks, setPendingWorks] = useState(() =>
-    readFromStorage(PENDING_WORKS_STORAGE_KEY, []),
-  );
-
-  const [approvedWorks, setApprovedWorks] = useState(() =>
-    readFromStorage(APPROVED_WORKS_STORAGE_KEY, []),
-  );
-
-  const [rejectedWorks, setRejectedWorks] = useState(() =>
-    readFromStorage(REJECTED_WORKS_STORAGE_KEY, []),
-  );
+  const [pendingWorks, setPendingWorks] = useState(() => getPendingWorks());
+  const [approvedWorks, setApprovedWorks] = useState(() => getApprovedWorks());
+  const [rejectedWorks, setRejectedWorks] = useState(() => getRejectedWorks());
 
   const [currentPagesByWork, setCurrentPagesByWork] = useState({});
   const [rejectingWorkId, setRejectingWorkId] = useState(null);
@@ -107,31 +102,17 @@ export default function AdminPage() {
    * @returns {void}
    */
   const approveWork = (workId) => {
-    const workToApprove = pendingWorks.find((work) => work.id === workId);
-
-    if (!workToApprove) {
-      return;
-    }
-
-    const approvedWork = {
-      ...workToApprove,
-      status: "approved",
-      approvedAt: new Date().toLocaleDateString("uk-UA"),
-      rejectedAt: "",
-      rejectionReason: "",
-    };
-
-    const updatedPendingWorks = pendingWorks.filter(
-      (work) => work.id !== workId,
+    const { updatedPendingWorks, updatedApprovedWorks } = approveWorkById(
+      pendingWorks,
+      approvedWorks,
+      workId,
     );
-
-    const updatedApprovedWorks = [...approvedWorks, approvedWork];
 
     setPendingWorks(updatedPendingWorks);
     setApprovedWorks(updatedApprovedWorks);
 
-    writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
-    writeToStorage(APPROVED_WORKS_STORAGE_KEY, updatedApprovedWorks);
+    savePendingWorks(updatedPendingWorks);
+    saveApprovedWorks(updatedApprovedWorks);
 
     if (rejectingWorkId === workId) {
       setRejectingWorkId(null);
@@ -177,30 +158,18 @@ export default function AdminPage() {
       return;
     }
 
-    const workToReject = pendingWorks.find((work) => work.id === workId);
-
-    if (!workToReject) {
-      return;
-    }
-
-    const rejectedWork = {
-      ...workToReject,
-      status: "rejected",
-      rejectedAt: new Date().toLocaleDateString("uk-UA"),
-      rejectionReason: normalizedReason,
-    };
-
-    const updatedPendingWorks = pendingWorks.filter(
-      (work) => work.id !== workId,
+    const { updatedPendingWorks, updatedRejectedWorks } = rejectWorkById(
+      pendingWorks,
+      rejectedWorks,
+      workId,
+      normalizedReason,
     );
-
-    const updatedRejectedWorks = [...rejectedWorks, rejectedWork];
 
     setPendingWorks(updatedPendingWorks);
     setRejectedWorks(updatedRejectedWorks);
 
-    writeToStorage(PENDING_WORKS_STORAGE_KEY, updatedPendingWorks);
-    writeToStorage(REJECTED_WORKS_STORAGE_KEY, updatedRejectedWorks);
+    savePendingWorks(updatedPendingWorks);
+    saveRejectedWorks(updatedRejectedWorks);
 
     setRejectingWorkId(null);
     setRejectionReason("");

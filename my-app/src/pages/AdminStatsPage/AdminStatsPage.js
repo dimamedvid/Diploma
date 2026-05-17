@@ -1,14 +1,16 @@
 import { useMemo } from "react";
 import worksData from "../../data/works.json";
 import {
-  APPROVED_WORKS_STORAGE_KEY,
-  COMMENTS_STORAGE_KEY,
-  PENDING_WORKS_STORAGE_KEY,
-  REJECTED_WORKS_STORAGE_KEY,
   enrichWorksWithRating,
   getAllPublishedWorks,
-  readFromStorage,
 } from "../../utils/worksStorage";
+import { getAllCommentsByWork } from "../../utils/commentsStorage";
+import {
+  getAllSubmittedWorks,
+  getApprovedWorks,
+  getPendingWorks,
+  getRejectedWorks,
+} from "../../utils/moderationStorage";
 import "./AdminStatsPage.css";
 
 /**
@@ -111,17 +113,17 @@ function getTopRatedWorks(works) {
  */
 export default function AdminStatsPage() {
   const stats = useMemo(() => {
-    const pendingWorks = readFromStorage(PENDING_WORKS_STORAGE_KEY, []);
-    const approvedWorks = readFromStorage(APPROVED_WORKS_STORAGE_KEY, []);
-    const rejectedWorks = readFromStorage(REJECTED_WORKS_STORAGE_KEY, []);
-    const commentsByWork = readFromStorage(COMMENTS_STORAGE_KEY, {});
+    const pendingWorks = getPendingWorks();
+    const approvedWorks = getApprovedWorks();
+    const rejectedWorks = getRejectedWorks();
+    const commentsByWork = getAllCommentsByWork();
 
     const publishedWorks = enrichWorksWithRating(getAllPublishedWorks(worksData));
-    const userSubmittedWorks = [
-      ...pendingWorks,
-      ...approvedWorks,
-      ...rejectedWorks,
-    ];
+    const userSubmittedWorks = getAllSubmittedWorks(
+      pendingWorks,
+      approvedWorks,
+      rejectedWorks,
+    );
 
     return {
       baseWorksCount: worksData.length,
@@ -247,13 +249,9 @@ export default function AdminStatsPage() {
 
                 <span>{work.genre}</span>
 
-                <strong>
-                  {Number(work.rating).toFixed(1)} / 5
-                </strong>
+                <strong>{Number(work.rating).toFixed(1)} / 5</strong>
 
-                <span>
-                  Оцінок: {work.ratingsCount || 0}
-                </span>
+                <span>Оцінок: {work.ratingsCount || 0}</span>
               </div>
             ))}
           </div>
