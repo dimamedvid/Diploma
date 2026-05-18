@@ -39,8 +39,6 @@ function mapPageRows(rows) {
 /**
  * Повертає список опублікованих творів.
  *
- * Для каталогу повертається тільки загальна інформація без повного тексту сторінок.
- *
  * @returns {Promise<Object[]>} Список опублікованих творів.
  */
 async function getPublishedWorks() {
@@ -70,6 +68,59 @@ async function getPublishedWorks() {
   );
 
   return result.rows.map(mapWorkRow);
+}
+
+/**
+ * Повертає список творів на модерації разом зі сторінками.
+ *
+ * @returns {Promise<Object[]>} Список творів зі статусом pending.
+ */
+async function getPendingWorksForModeration() {
+  const worksResult = await query(
+    `
+      SELECT
+        id,
+        title,
+        author,
+        author_id,
+        genre,
+        description,
+        cover,
+        status,
+        rating,
+        submitted_at,
+        approved_at,
+        rejected_at,
+        rejection_reason,
+        created_at,
+        updated_at
+      FROM works
+      WHERE status = $1
+      ORDER BY submitted_at ASC, id ASC
+    `,
+    ["pending"],
+  );
+
+  const works = await Promise.all(
+    worksResult.rows.map(async (workRow) => {
+      const pagesResult = await query(
+        `
+          SELECT page_number, content
+          FROM work_pages
+          WHERE work_id = $1
+          ORDER BY page_number ASC
+        `,
+        [workRow.id],
+      );
+
+      return {
+        ...mapWorkRow(workRow),
+        pages: mapPageRows(pagesResult.rows),
+      };
+    }),
+  );
+
+  return works;
 }
 
 /**
@@ -125,9 +176,6 @@ async function getWorkById(workId) {
 
 /**
  * Створює новий твір і його сторінки у PostgreSQL.
- *
- * Новий твір одразу отримує статус pending,
- * тобто очікує перевірки модератором.
  *
  * @param {Object} workData - Дані нового твору.
  * @param {string} workData.title - Назва твору.
@@ -213,8 +261,100 @@ async function createWork(workData) {
   };
 }
 
+/**
+ * Підтверджує твір і переводить його у статус approved.
+ *
+ * @param {number|string} workId - ID твору.
+ * @returns {Promise<Object|null>} Оновлений твір або null.
+ */
+async function approveWorkById(workId) {
+  const result = await query(
+    `
+      UPDATE works
+      SET
+        status = $1,
+        approved_at = CURRENT_TIMESTAMP,
+        rejected_at = NULL,
+        rejection_reason = NULL,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2 AND status = $3
+      RETURNING
+        id,
+        title,
+        author,
+        author_id,
+        genre,
+        description,
+        cover,
+        status,
+        rating,
+        submitted_at,
+        approved_at,
+        rejected_at,
+        rejection_reason,
+        created_at,
+        updated_at
+    `,
+    ["approved", workId, "pending"],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapWorkRow(result.rows[0]);
+}
+
+/**
+ * Відхиляє твір і переводить його у статус rejected.
+ *
+ * @param {number|string} workId - ID твору.
+ * @param {string} rejectionReason - Причина відхилення.
+ * @returns {Promise<Object|null>} Оновлений твір або null.
+ */
+async function rejectWorkById(workId, rejectionReason) {
+  const result = await query(
+    `
+      UPDATE works
+      SET
+        status = $1,
+        rejected_at = CURRENT_TIMESTAMP,
+        rejection_reason = $2,
+        approved_at = NULL,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3 AND status = $4
+      RETURNING
+        id,
+        title,
+        author,
+        author_id,
+        genre,
+        description,
+        cover,
+        status,
+        rating,
+        submitted_at,
+        approved_at,
+        rejected_at,
+        rejection_reason,
+        created_at,
+        updated_at
+    `,
+    ["rejected", rejectionReason, workId, "pending"],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapWorkRow(result.rows[0]);
+}
+
 module.exports = {
   getPublishedWorks,
+  getPendingWorksForModeration,
   getWorkById,
   createWork,
+  approveWorkById,
+  rejectWorkById,
 };

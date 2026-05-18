@@ -1,8 +1,11 @@
 const express = require("express");
 const {
+  approveWorkById,
   createWork,
+  getPendingWorksForModeration,
   getPublishedWorks,
   getWorkById,
+  rejectWorkById,
 } = require("../utils/workDb");
 const { authMiddleware } = require("../middlewares/auth.middleware");
 const { createModuleLogger } = require("../utils/logger");
@@ -36,6 +39,32 @@ function arePagesValid(pages) {
 }
 
 /**
+ * Перевіряє, чи користувач є модератором або адміністратором.
+ *
+ * @param {Object} req - HTTP-запит Express.
+ * @param {Object} req.user - Дані користувача з JWT.
+ * @param {Object} res - HTTP-відповідь Express.
+ * @param {Function} next - Функція переходу до наступного middleware.
+ * @returns {void}
+ */
+function moderatorOnly(req, res, next) {
+  const allowedRoles = ["moderator", "admin"];
+
+  if (!allowedRoles.includes(req.user?.role)) {
+    return next(
+      new AppError(
+        "У вас немає прав для виконання цієї дії.",
+        403,
+        { role: req.user?.role || null },
+        "auth.forbidden",
+      ),
+    );
+  }
+
+  return next();
+}
+
+/**
  * @openapi
  * /api/works:
  *   get:
@@ -65,6 +94,49 @@ router.get("/", async (req, res, next) => {
     });
 
     const works = await getPublishedWorks();
+
+    return res.json(works);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * @openapi
+ * /api/works/moderation/pending:
+ *   get:
+ *     tags:
+ *       - Works
+ *     summary: Отримання творів на модерації
+ *     description: Повертає список творів зі статусом pending разом зі сторінками. Доступно тільки модератору або адміністратору.
+ *     responses:
+ *       "200":
+ *         description: Список творів на модерації успішно отримано.
+ *       "401":
+ *         description: Користувач не авторизований.
+ *       "403":
+ *         description: Недостатньо прав.
+ */
+
+/**
+ * GET /api/works/moderation/pending
+ *
+ * Повертає твори, які очікують модерації.
+ *
+ * @param {Object} req - HTTP-запит Express.
+ * @param {Object} res - HTTP-відповідь Express.
+ * @param {Function} next - Функція передачі помилки.
+ * @returns {Promise<Object|void>} JSON-список pending-творів.
+ */
+router.get("/moderation/pending", authMiddleware, moderatorOnly, async (req, res, next) => {
+  try {
+    const works = await getPendingWorksForModeration();
+
+    log.info("Pending works requested", {
+      requestId: req.requestId,
+      moderatorId: req.user.id,
+      count: works.length,
+    });
 
     return res.json(works);
   } catch (error) {
@@ -211,6 +283,119 @@ router.post("/", authMiddleware, async (req, res, next) => {
     });
 
     return res.status(201).json(work);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * @openapi
+ * /api/works/{id}/approve:
+ *   patch:
+ *     tags:
+ *       - Works
+ *     summary: Підтвердження твору
+ *     description: Переводить твір зі статусу pending у статус approved. Доступно тільки модератору або адміністратору.
+ *     responses:
+ *       "200":
+ *         description: Твір підтверджено.
+ *       "404":
+ *         description: Твір не знайдено або він не очікує модерації.
+ */
+
+/**
+ * PATCH /api/works/:id/approve
+ *
+ * Підтверджує твір.
+ *
+ * @param {Object} req - HTTP-запит Express.
+ * @param {Object} res - HTTP-відповідь Express.
+ * @param {Function} next - Функція передачі помилки.
+ * @returns {Promise<Object|void>} JSON-об'єкт підтвердженого твору.
+ */
+router.patch("/:id/approve", authMiddleware, moderatorOnly, async (req, res, next) => {
+  try {
+    const approvedWork = await approveWorkById(req.params.id);
+
+    if (!approvedWork) {
+      throw new AppError(
+        "Твір не знайдено або він не очікує модерації.",
+        404,
+        { workId: req.params.id },
+        "works.approveNotFound",
+      );
+    }
+
+    log.info("Work approved", {
+      requestId: req.requestId,
+      workId: approvedWork.id,
+      moderatorId: req.user.id,
+    });
+
+    return res.json(approvedWork);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * @openapi
+ * /api/works/{id}/reject:
+ *   patch:
+ *     tags:
+ *       - Works
+ *     summary: Відхилення твору
+ *     description: Переводить твір зі статусу pending у статус rejected із причиною відхилення. Доступно тільки модератору або адміністратору.
+ *     responses:
+ *       "200":
+ *         description: Твір відхилено.
+ *       "400":
+ *         description: Причина відхилення не вказана.
+ *       "404":
+ *         description: Твір не знайдено або він не очікує модерації.
+ */
+
+/**
+ * PATCH /api/works/:id/reject
+ *
+ * Відхиляє твір із причиною.
+ *
+ * @param {Object} req - HTTP-запит Express.
+ * @param {Object} res - HTTP-відповідь Express.
+ * @param {Function} next - Функція передачі помилки.
+ * @returns {Promise<Object|void>} JSON-об'єкт відхиленого твору.
+ */
+router.patch("/:id/reject", authMiddleware, moderatorOnly, async (req, res, next) => {
+  try {
+    const { reason } = req.body;
+
+    if (!isNonEmptyString(reason)) {
+      throw new AppError(
+        "Вкажіть причину відхилення твору.",
+        400,
+        { field: "reason" },
+        "works.rejectionReasonRequired",
+      );
+    }
+
+    const rejectedWork = await rejectWorkById(req.params.id, reason.trim());
+
+    if (!rejectedWork) {
+      throw new AppError(
+        "Твір не знайдено або він не очікує модерації.",
+        404,
+        { workId: req.params.id },
+        "works.rejectNotFound",
+      );
+    }
+
+    log.info("Work rejected", {
+      requestId: req.requestId,
+      workId: rejectedWork.id,
+      moderatorId: req.user.id,
+    });
+
+    return res.json(rejectedWork);
   } catch (error) {
     return next(error);
   }
