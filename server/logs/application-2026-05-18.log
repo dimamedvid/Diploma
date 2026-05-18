@@ -1,0 +1,9 @@
+2026-05-18 18:36:49 [INFO] [server] API running on http://localhost:4000 {"env":"development"}
+2026-05-18 18:36:52 [INFO] [request] HTTP request started {"requestId":"8681c97c-9829-461f-a4c9-7dcb42c16934","method":"GET","url":"/","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-18 18:36:52 [WARNING] [request] HTTP request finished with client error {"requestId":"8681c97c-9829-461f-a4c9-7dcb42c16934","method":"GET","url":"/","statusCode":404,"durationMs":4,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-18 18:37:00 [INFO] [request] HTTP request started {"requestId":"634c51ea-dd5d-4203-997e-8dcee6849857","method":"GET","url":"/api/health","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-18 18:37:00 [INFO] [db] Database connection checked successfully
+2026-05-18 18:37:00 [INFO] [request] HTTP request finished {"requestId":"634c51ea-dd5d-4203-997e-8dcee6849857","method":"GET","url":"/api/health","statusCode":200,"durationMs":44,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-18 18:37:00 [INFO] [request] HTTP request started {"requestId":"9c541922-849b-4033-89bc-5e079ae44305","method":"GET","url":"/favicon.ico","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-18 18:37:00 [WARNING] [request] HTTP request finished with client error {"requestId":"9c541922-849b-4033-89bc-5e079ae44305","method":"GET","url":"/favicon.ico","statusCode":404,"durationMs":1,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-18 20:21:06 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}

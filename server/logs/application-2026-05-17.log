@@ -1,1 +1,2 @@
 2026-05-17 17:12:48 [INFO] [server] API running on http://localhost:4000 {"env":"development"}
+2026-05-17 20:14:42 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}

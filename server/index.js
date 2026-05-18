@@ -1,13 +1,17 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 
 const authRoutes = require("./routes/auth.routes");
+const workRoutes = require("./routes/work.routes");
 const swaggerSpec = require("./docs/swagger");
 const requestContext = require("./middlewares/requestContext");
 const requestLogger = require("./middlewares/requestLogger");
 const errorHandler = require("./middlewares/errorHandler");
 const { createModuleLogger } = require("./utils/logger");
+const { checkDbConnection } = require("./utils/db");
 
 /**
  * Основний Express-застосунок серверної частини.
@@ -16,8 +20,10 @@ const { createModuleLogger } = require("./utils/logger");
  * - обробку HTTP-запитів;
  * - підключення middleware;
  * - маршрутизацію API авторизації;
+ * - маршрутизацію API творів;
  * - надання Swagger UI та OpenAPI JSON;
- * - health-check endpoint для перевірки доступності сервера.
+ * - health-check endpoint для перевірки доступності сервера;
+ * - перевірку підключення до PostgreSQL.
  */
 const app = express();
 const log = createModuleLogger("server");
@@ -58,6 +64,13 @@ app.use(requestLogger);
 app.use("/api/auth", authRoutes);
 
 /**
+ * Підключення маршрутів творів.
+ *
+ * Усі маршрути з модуля `work.routes` доступні з префіксом `/api/works`.
+ */
+app.use("/api/works", workRoutes);
+
+/**
  * Swagger UI для інтерактивного перегляду і тестування API.
  *
  * Документація доступна за адресою `/api/docs`.
@@ -82,37 +95,32 @@ app.get("/api/docs.json", (req, res) => res.json(swaggerSpec));
  *     tags:
  *       - System
  *     summary: Перевірка доступності сервера
- *     description: Технічний endpoint для перевірки того, що backend працює.
+ *     description: Технічний endpoint для перевірки того, що backend і база даних працюють.
  *     responses:
  *       "200":
  *         description: Сервер доступний
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/HealthResponse'
- *             examples:
- *               success:
- *                 value:
- *                   ok: true
  */
 
 /**
  * GET /api/health
  *
- * Технічний endpoint для перевірки доступності сервера.
- * Використовується для health-check, тестування та перевірки,
- * чи backend запущений і може відповідати на запити.
+ * Технічний endpoint для перевірки доступності сервера та PostgreSQL.
  *
  * @param {object} req - HTTP-запит Express.
  * @param {object} res - HTTP-відповідь Express.
- * @returns {object} JSON-об'єкт зі статусом доступності сервера.
+ * @returns {Promise<object>} JSON-об'єкт зі статусом сервера та бази даних.
  */
-app.get("/api/health", (req, res) => {
+app.get("/api/health", async (req, res) => {
   log.debug("Health-check requested", {
     requestId: req.requestId,
   });
 
-  return res.json({ ok: true });
+  const dbOk = await checkDbConnection();
+
+  return res.json({
+    ok: true,
+    database: dbOk,
+  });
 });
 
 /**
@@ -129,7 +137,7 @@ app.use(errorHandler);
  * що дозволяє використовувати `app` у test environment без відкриття порту.
  */
 if (require.main === module) {
-  const PORT = 4000;
+  const PORT = Number(process.env.PORT || 4000);
 
   const server = app.listen(PORT, () => {
     log.info(`API running on http://localhost:${PORT}`, {
