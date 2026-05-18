@@ -27,6 +27,7 @@ import {
   saveFavoriteWorkIds,
   toggleFavoriteWork,
 } from "../../utils/favoritesStorage";
+import { getWorkById } from "../../api/worksApi";
 import "./WorkDetailsPage.css";
 
 /**
@@ -53,11 +54,19 @@ function getCurrentUserId(user) {
 }
 
 /**
- * Сторінка детального перегляду твору.
+ * Шукає локальний твір як fallback.
  *
- * Містить інформацію про твір, читання по сторінках,
- * збереження прогресу читання, обране, коментарі,
- * редагування, видалення коментарів, лайки та рейтинг.
+ * @param {number|string} id - ID твору.
+ * @returns {Object|null} Знайдений твір або null.
+ */
+function getLocalFallbackWork(id) {
+  const allWorks = getAllPublishedWorks(worksData);
+
+  return allWorks.find((item) => String(item.id) === String(id)) || null;
+}
+
+/**
+ * Сторінка детального перегляду твору.
  *
  * @function WorkDetailsPage
  * @returns {JSX.Element}
@@ -65,6 +74,10 @@ function getCurrentUserId(user) {
 export default function WorkDetailsPage() {
   const { id } = useParams();
   const { user } = useSelector((state) => state.auth);
+
+  const [work, setWork] = useState(() => getLocalFallbackWork(id));
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
 
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -81,18 +94,13 @@ export default function WorkDetailsPage() {
   const [editingText, setEditingText] = useState("");
   const [editingRating, setEditingRating] = useState("5");
 
-  const allWorks = useMemo(() => {
-    return getAllPublishedWorks(worksData);
-  }, []);
-
-  const work = useMemo(() => {
-    return allWorks.find((item) => String(item.id) === String(id));
-  }, [allWorks, id]);
-
   const isAuthorized = Boolean(user);
   const currentUserId = isAuthorized ? getCurrentUserId(user) : "";
 
-  const pages = work?.pages || [];
+  const pages = useMemo(() => {
+    return work?.pages || [];
+  }, [work]);
+
   const pageText = pages[currentPage] || "Текст твору поки не додано.";
   const isFavorite = work ? isWorkFavorite(favoriteIds, work.id) : false;
   const workComments = work ? getWorkComments(commentsByWork, work.id) : [];
@@ -109,6 +117,51 @@ export default function WorkDetailsPage() {
     workComments,
     currentUserId,
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    /**
+     * Завантажує твір з backend.
+     *
+     * Якщо backend недоступний, використовує локальний fallback.
+     *
+     * @returns {Promise<void>}
+     */
+    const loadWork = async () => {
+      try {
+        setIsLoading(true);
+
+        const workFromApi = await getWorkById(id);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setWork(workFromApi);
+        setApiError("");
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setWork(getLocalFallbackWork(id));
+        setApiError(
+          "Backend зараз недоступний або твір не знайдено, тому використано локальні дані.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadWork();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!work || !isAuthorized || pages.length === 0) {
@@ -129,13 +182,21 @@ export default function WorkDetailsPage() {
     saveReadingPage(currentUserId, work.id, currentPage);
   }, [work, isAuthorized, currentUserId, currentPage, pages.length]);
 
-  if (!work) {
+  if (!work && !isLoading) {
     return (
       <section className="work-details">
         <h1>Твір не знайдено</h1>
         <a className="work-details__back" href="/">
           Повернутися на головну
         </a>
+      </section>
+    );
+  }
+
+  if (!work && isLoading) {
+    return (
+      <section className="work-details">
+        <h1>Завантаження твору...</h1>
       </section>
     );
   }
@@ -329,6 +390,8 @@ export default function WorkDetailsPage() {
       <a className="work-details__back" href="/">
         ← До каталогу
       </a>
+
+      {apiError && <p className="work-details__description">{apiError}</p>}
 
       <div className="work-details__header">
         <div className="work-details__cover-wrapper">

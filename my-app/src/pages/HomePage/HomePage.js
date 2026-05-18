@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import FiltersBar from "../../components/FiltersBar/FiltersBar";
 import WorksGrid from "../../components/WorksGrid/WorksGrid";
@@ -12,12 +12,11 @@ import {
   getFavoriteGenresForUser,
   sortWorksByFavoriteGenres,
 } from "../../utils/favoriteGenresStorage";
+import { getWorks } from "../../api/worksApi";
 import "./HomePage.css";
 
 /**
  * Перевіряє, чи твір відповідає пошуковому запиту.
- *
- * Пошук виконується за назвою, автором, жанром і описом.
  *
  * @param {Object} work - Твір.
  * @param {string} query - Пошуковий запит.
@@ -91,11 +90,18 @@ function sortWorks(works, sortOption, favoriteGenres) {
 }
 
 /**
- * Головна сторінка каталогу творів.
+ * Повертає локальні твори як fallback, якщо backend недоступний.
  *
- * Відображає список опублікованих творів,
- * підтримує пошук, фільтрацію за жанром і рейтингом,
- * персоналізоване сортування та додаткові варіанти сортування.
+ * @returns {Object[]} Список локальних творів.
+ */
+function getLocalFallbackWorks() {
+  const publishedWorks = getAllPublishedWorks(worksData);
+
+  return enrichWorksWithRating(publishedWorks);
+}
+
+/**
+ * Головна сторінка каталогу творів.
  *
  * @returns {JSX.Element} Головна сторінка з каталогом творів.
  */
@@ -108,14 +114,57 @@ export default function HomePage() {
   const [ratingMax, setRatingMax] = useState("5");
   const [sortOption, setSortOption] = useState("recommended");
 
+  const [allWorks, setAllWorks] = useState(() => getLocalFallbackWorks());
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
+
   const favoriteGenres = useMemo(() => {
     return getFavoriteGenresForUser(user);
   }, [user]);
 
-  const allWorks = useMemo(() => {
-    const publishedWorks = getAllPublishedWorks(worksData);
+  useEffect(() => {
+    let isMounted = true;
 
-    return enrichWorksWithRating(publishedWorks);
+    /**
+     * Завантажує твори з backend.
+     *
+     * Якщо backend недоступний, залишає локальні дані.
+     *
+     * @returns {Promise<void>}
+     */
+    const loadWorks = async () => {
+      try {
+        setIsLoading(true);
+
+        const worksFromApi = await getWorks();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setAllWorks(enrichWorksWithRating(worksFromApi));
+        setApiError("");
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setAllWorks(getLocalFallbackWorks());
+        setApiError(
+          "Backend зараз недоступний, тому показуються локальні дані.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadWorks();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const genres = useMemo(() => {
@@ -130,8 +179,8 @@ export default function HomePage() {
       (work) =>
         doesWorkMatchQuery(work, query) &&
         (genre === "Всі жанри" || work.genre === genre) &&
-        work.rating >= min &&
-        work.rating <= max,
+        Number(work.rating || 0) >= min &&
+        Number(work.rating || 0) <= max,
     );
 
     return sortWorks(filtered, sortOption, favoriteGenres);
@@ -157,7 +206,15 @@ export default function HomePage() {
         <div>
           <h2 className="results__title">Результати пошуку</h2>
 
-          {favoriteGenres.length > 0 && sortOption === "recommended" && (
+          {isLoading && (
+            <p className="results__hint">Завантажуємо твори з сервера...</p>
+          )}
+
+          {!isLoading && apiError && (
+            <p className="results__hint">{apiError}</p>
+          )}
+
+          {!isLoading && favoriteGenres.length > 0 && sortOption === "recommended" && (
             <p className="results__hint">
               Спочатку показуються твори з ваших улюблених жанрів:{" "}
               {favoriteGenres.join(", ")}.
