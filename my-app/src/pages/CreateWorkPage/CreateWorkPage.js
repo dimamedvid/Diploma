@@ -1,13 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import {
-  PENDING_WORKS_STORAGE_KEY,
-  getUserFullName,
-  getUserId,
-  readFromStorage,
-  writeToStorage,
-} from "../../utils/worksStorage";
+import { createWork } from "../../api/worksApi";
+import { getUserFullName } from "../../utils/worksStorage";
 import {
   MIN_CONTENT_LENGTH,
   hasTooLongWords,
@@ -36,13 +31,13 @@ function renderParagraphs(text) {
  * Сторінка створення нового твору користувачем.
  *
  * Дозволяє заповнити інформацію про твір, переглянути попередній результат,
- * побачити кількість символів і сторінок, а потім відправити твір на модерацію.
+ * побачити кількість символів і сторінок, а потім відправити твір на backend.
  *
  * @returns {JSX.Element} Форма додавання нового твору.
  */
 export default function CreateWorkPage() {
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
+  const { user, token } = useSelector((state) => state.auth);
 
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("");
@@ -51,6 +46,7 @@ export default function CreateWorkPage() {
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
   const [previewPage, setPreviewPage] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const pages = useMemo(() => {
     return splitTextIntoPages(content);
@@ -105,10 +101,15 @@ export default function CreateWorkPage() {
    * Обробляє відправку форми створення твору.
    *
    * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (!token) {
+      setError("Щоб додати твір, потрібно увійти в акаунт.");
+      return;
+    }
 
     if (!title.trim() || !genre.trim() || !description.trim()) {
       setError("Заповніть назву, жанр і короткий опис твору.");
@@ -139,24 +140,30 @@ export default function CreateWorkPage() {
       return;
     }
 
-    const pendingWorks = readFromStorage(PENDING_WORKS_STORAGE_KEY, []);
+    try {
+      setIsSubmitting(true);
+      setError("");
 
-    const newWork = {
-      id: Date.now(),
-      title: title.trim(),
-      author: getUserFullName(user),
-      authorId: getUserId(user),
-      genre: genre.trim(),
-      rating: 0,
-      description: description.trim(),
-      cover: previewCover,
-      pages,
-      status: "pending",
-      submittedAt: new Date().toLocaleDateString("uk-UA"),
-    };
+      await createWork(
+        {
+          title: title.trim(),
+          genre: genre.trim(),
+          description: description.trim(),
+          cover: previewCover,
+          pages,
+        },
+        token,
+      );
 
-    writeToStorage(PENDING_WORKS_STORAGE_KEY, [...pendingWorks, newWork]);
-    navigate("/cabinet");
+      navigate("/cabinet");
+    } catch (submitError) {
+      setError(
+        submitError.message ||
+          "Не вдалося відправити твір на модерацію. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -182,6 +189,7 @@ export default function CreateWorkPage() {
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Наприклад: Мій перший твір"
+              disabled={isSubmitting}
             />
           </label>
 
@@ -192,6 +200,7 @@ export default function CreateWorkPage() {
               value={genre}
               onChange={(event) => setGenre(event.target.value)}
               placeholder="Наприклад: Поезія, Повість, Драма"
+              disabled={isSubmitting}
             />
           </label>
 
@@ -203,6 +212,7 @@ export default function CreateWorkPage() {
               onChange={(event) => setDescription(event.target.value)}
               placeholder="Коротко опишіть твір"
               rows="4"
+              disabled={isSubmitting}
             />
           </label>
 
@@ -213,6 +223,7 @@ export default function CreateWorkPage() {
               value={cover}
               onChange={(event) => setCover(event.target.value)}
               placeholder="https://..."
+              disabled={isSubmitting}
             />
 
             <span className="create-work__hint">
@@ -240,6 +251,7 @@ export default function CreateWorkPage() {
                 "Вставте текст твору тут.\n\nНовий абзац робіть через порожній рядок.\n\nДля ручного поділу сторінок поставте --- між частинами тексту."
               }
               rows="14"
+              disabled={isSubmitting}
             />
           </label>
 
@@ -282,7 +294,7 @@ export default function CreateWorkPage() {
               <div className="create-work__preview-info">
                 <h3>{title || "Назва твору"}</h3>
                 <p className="create-work__preview-author">
-                  {getUserFullName(user)}
+                  {user ? getUserFullName(user) : "Автор"}
                 </p>
 
                 <div className="create-work__preview-meta">
@@ -317,7 +329,7 @@ export default function CreateWorkPage() {
                     className="create-work__preview-button"
                     type="button"
                     onClick={goToPreviousPreviewPage}
-                    disabled={safePreviewPage === 0}
+                    disabled={safePreviewPage === 0 || isSubmitting}
                   >
                     Попередня
                   </button>
@@ -326,7 +338,9 @@ export default function CreateWorkPage() {
                     className="create-work__preview-button"
                     type="button"
                     onClick={goToNextPreviewPage}
-                    disabled={safePreviewPage === pages.length - 1}
+                    disabled={
+                      safePreviewPage === pages.length - 1 || isSubmitting
+                    }
                   >
                     Наступна
                   </button>
@@ -336,14 +350,19 @@ export default function CreateWorkPage() {
           </section>
 
           <div className="create-work__actions">
-            <button className="create-work__submit" type="submit">
-              Відправити на модерацію
+            <button
+              className="create-work__submit"
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Відправляємо..." : "Відправити на модерацію"}
             </button>
 
             <button
               className="create-work__clear"
               type="button"
               onClick={clearForm}
+              disabled={isSubmitting}
             >
               Очистити форму
             </button>
@@ -352,6 +371,7 @@ export default function CreateWorkPage() {
               className="create-work__cancel"
               type="button"
               onClick={() => navigate("/cabinet")}
+              disabled={isSubmitting}
             >
               Скасувати
             </button>
