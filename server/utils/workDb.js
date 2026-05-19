@@ -124,6 +124,43 @@ async function getPendingWorksForModeration() {
 }
 
 /**
+ * Повертає всі твори конкретного користувача.
+ *
+ * Використовується для блоку "Мої твори" в особистому кабінеті.
+ *
+ * @param {string} authorId - ID автора з JWT.
+ * @returns {Promise<Object[]>} Список творів користувача.
+ */
+async function getWorksByAuthorId(authorId) {
+  const result = await query(
+    `
+      SELECT
+        id,
+        title,
+        author,
+        author_id,
+        genre,
+        description,
+        cover,
+        status,
+        rating,
+        submitted_at,
+        approved_at,
+        rejected_at,
+        rejection_reason,
+        created_at,
+        updated_at
+      FROM works
+      WHERE author_id = $1
+      ORDER BY created_at DESC, id DESC
+    `,
+    [authorId],
+  );
+
+  return result.rows.map(mapWorkRow);
+}
+
+/**
  * Повертає один твір разом зі сторінками.
  *
  * @param {number|string} workId - ID твору.
@@ -353,6 +390,7 @@ async function rejectWorkById(workId, rejectionReason) {
 module.exports = {
   getPublishedWorks,
   getPendingWorksForModeration,
+  getWorksByAuthorId,
   getWorkById,
   createWork,
   approveWorkById,

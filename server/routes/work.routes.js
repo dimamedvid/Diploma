@@ -5,6 +5,7 @@ const {
   getPendingWorksForModeration,
   getPublishedWorks,
   getWorkById,
+  getWorksByAuthorId,
   rejectWorkById,
 } = require("../utils/workDb");
 const { authMiddleware } = require("../middlewares/auth.middleware");
@@ -128,13 +129,59 @@ router.get("/", async (req, res, next) => {
  * @param {Function} next - Функція передачі помилки.
  * @returns {Promise<Object|void>} JSON-список pending-творів.
  */
-router.get("/moderation/pending", authMiddleware, moderatorOnly, async (req, res, next) => {
-  try {
-    const works = await getPendingWorksForModeration();
+router.get(
+  "/moderation/pending",
+  authMiddleware,
+  moderatorOnly,
+  async (req, res, next) => {
+    try {
+      const works = await getPendingWorksForModeration();
 
-    log.info("Pending works requested", {
+      log.info("Pending works requested", {
+        requestId: req.requestId,
+        moderatorId: req.user.id,
+        count: works.length,
+      });
+
+      return res.json(works);
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+/**
+ * @openapi
+ * /api/works/my:
+ *   get:
+ *     tags:
+ *       - Works
+ *     summary: Отримання власних творів користувача
+ *     description: Повертає всі твори поточного авторизованого користувача зі статусами pending, approved або rejected.
+ *     responses:
+ *       "200":
+ *         description: Список власних творів успішно отримано.
+ *       "401":
+ *         description: Користувач не авторизований.
+ */
+
+/**
+ * GET /api/works/my
+ *
+ * Повертає твори поточного авторизованого користувача.
+ *
+ * @param {Object} req - HTTP-запит Express.
+ * @param {Object} res - HTTP-відповідь Express.
+ * @param {Function} next - Функція передачі помилки.
+ * @returns {Promise<Object|void>} JSON-список творів користувача.
+ */
+router.get("/my", authMiddleware, async (req, res, next) => {
+  try {
+    const works = await getWorksByAuthorId(req.user.id);
+
+    log.info("Current user works requested", {
       requestId: req.requestId,
-      moderatorId: req.user.id,
+      authorId: req.user.id,
       count: works.length,
     });
 
@@ -313,30 +360,35 @@ router.post("/", authMiddleware, async (req, res, next) => {
  * @param {Function} next - Функція передачі помилки.
  * @returns {Promise<Object|void>} JSON-об'єкт підтвердженого твору.
  */
-router.patch("/:id/approve", authMiddleware, moderatorOnly, async (req, res, next) => {
-  try {
-    const approvedWork = await approveWorkById(req.params.id);
+router.patch(
+  "/:id/approve",
+  authMiddleware,
+  moderatorOnly,
+  async (req, res, next) => {
+    try {
+      const approvedWork = await approveWorkById(req.params.id);
 
-    if (!approvedWork) {
-      throw new AppError(
-        "Твір не знайдено або він не очікує модерації.",
-        404,
-        { workId: req.params.id },
-        "works.approveNotFound",
-      );
+      if (!approvedWork) {
+        throw new AppError(
+          "Твір не знайдено або він не очікує модерації.",
+          404,
+          { workId: req.params.id },
+          "works.approveNotFound",
+        );
+      }
+
+      log.info("Work approved", {
+        requestId: req.requestId,
+        workId: approvedWork.id,
+        moderatorId: req.user.id,
+      });
+
+      return res.json(approvedWork);
+    } catch (error) {
+      return next(error);
     }
-
-    log.info("Work approved", {
-      requestId: req.requestId,
-      workId: approvedWork.id,
-      moderatorId: req.user.id,
-    });
-
-    return res.json(approvedWork);
-  } catch (error) {
-    return next(error);
-  }
-});
+  },
+);
 
 /**
  * @openapi
@@ -365,40 +417,45 @@ router.patch("/:id/approve", authMiddleware, moderatorOnly, async (req, res, nex
  * @param {Function} next - Функція передачі помилки.
  * @returns {Promise<Object|void>} JSON-об'єкт відхиленого твору.
  */
-router.patch("/:id/reject", authMiddleware, moderatorOnly, async (req, res, next) => {
-  try {
-    const { reason } = req.body;
+router.patch(
+  "/:id/reject",
+  authMiddleware,
+  moderatorOnly,
+  async (req, res, next) => {
+    try {
+      const { reason } = req.body;
 
-    if (!isNonEmptyString(reason)) {
-      throw new AppError(
-        "Вкажіть причину відхилення твору.",
-        400,
-        { field: "reason" },
-        "works.rejectionReasonRequired",
-      );
+      if (!isNonEmptyString(reason)) {
+        throw new AppError(
+          "Вкажіть причину відхилення твору.",
+          400,
+          { field: "reason" },
+          "works.rejectionReasonRequired",
+        );
+      }
+
+      const rejectedWork = await rejectWorkById(req.params.id, reason.trim());
+
+      if (!rejectedWork) {
+        throw new AppError(
+          "Твір не знайдено або він не очікує модерації.",
+          404,
+          { workId: req.params.id },
+          "works.rejectNotFound",
+        );
+      }
+
+      log.info("Work rejected", {
+        requestId: req.requestId,
+        workId: rejectedWork.id,
+        moderatorId: req.user.id,
+      });
+
+      return res.json(rejectedWork);
+    } catch (error) {
+      return next(error);
     }
-
-    const rejectedWork = await rejectWorkById(req.params.id, reason.trim());
-
-    if (!rejectedWork) {
-      throw new AppError(
-        "Твір не знайдено або він не очікує модерації.",
-        404,
-        { workId: req.params.id },
-        "works.rejectNotFound",
-      );
-    }
-
-    log.info("Work rejected", {
-      requestId: req.requestId,
-      workId: rejectedWork.id,
-      moderatorId: req.user.id,
-    });
-
-    return res.json(rejectedWork);
-  } catch (error) {
-    return next(error);
-  }
-});
+  },
+);
 
 module.exports = router;

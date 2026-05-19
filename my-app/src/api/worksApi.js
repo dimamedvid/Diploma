@@ -72,6 +72,18 @@ export function createWork(workData, token) {
 }
 
 /**
+ * Отримує твори поточного користувача.
+ *
+ * @param {string} token - JWT-токен користувача.
+ * @returns {Promise<Object[]>} Список власних творів користувача.
+ */
+export function getMyWorks(token) {
+  return request("/api/works/my", {
+    headers: getAuthHeader(token),
+  });
+}
+
+/**
  * Отримує твори, які очікують модерації.
  *
  * @param {string} token - JWT-токен модератора або адміністратора.
