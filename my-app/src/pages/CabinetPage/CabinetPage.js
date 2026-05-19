@@ -33,7 +33,7 @@ import {
   saveFavoriteGenresByUser,
   toggleFavoriteGenreForUser,
 } from "../../utils/favoriteGenresStorage";
-import { getMyWorks } from "../../api/worksApi";
+import { deleteWork, getMyWorks } from "../../api/worksApi";
 import "./CabinetPage.css";
 
 /**
@@ -59,9 +59,6 @@ function mapUserWorkStatus(work) {
 /**
  * Сторінка особистого кабінету авторизованого користувача.
  *
- * Відображає дані користувача, прогрес читання, улюблені жанри,
- * власні твори з PostgreSQL, обране, коментарі та оцінки.
- *
  * @returns {JSX.Element} Сторінка особистого кабінету.
  */
 export default function CabinetPage() {
@@ -86,6 +83,7 @@ export default function CabinetPage() {
   const [userWorks, setUserWorks] = useState([]);
   const [isUserWorksLoading, setIsUserWorksLoading] = useState(true);
   const [userWorksError, setUserWorksError] = useState("");
+  const [deletingWorkId, setDeletingWorkId] = useState(null);
 
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState("");
@@ -221,8 +219,6 @@ export default function CabinetPage() {
   /**
    * Видаляє твір зі списку "Продовжити читання".
    *
-   * Сам твір не видаляється, очищується тільки прогрес читання користувача.
-   *
    * @param {number|string} workId - ID твору.
    * @returns {void}
    */
@@ -238,25 +234,51 @@ export default function CabinetPage() {
   };
 
   /**
-   * Тимчасово прибирає твір зі списку в кабінеті.
-   *
-   * Повне видалення з PostgreSQL зробимо окремим backend endpoint.
+   * Видаляє власний твір з PostgreSQL.
    *
    * @param {number|string} workId - ID твору.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const deleteOwnWork = (workId) => {
+  const deleteOwnWork = async (workId) => {
     const shouldDelete = window.confirm(
-      "Повне видалення з бази даних ще не підключене. Тимчасово прибрати твір зі списку в кабінеті?",
+      "Ви впевнені, що хочете видалити цей твір? Його буде видалено з бази даних.",
     );
 
     if (!shouldDelete) {
       return;
     }
 
-    setUserWorks((works) =>
-      works.filter((work) => String(work.id) !== String(workId)),
-    );
+    if (!token) {
+      setUserWorksError("Щоб видалити твір, потрібно увійти в акаунт.");
+      return;
+    }
+
+    try {
+      setDeletingWorkId(workId);
+      setUserWorksError("");
+
+      await deleteWork(workId, token);
+
+      setUserWorks((works) =>
+        works.filter((work) => String(work.id) !== String(workId)),
+      );
+
+      const updatedReadingProgressByUser = deleteReadingProgressByWork(
+        readingProgressByUser,
+        userId,
+        workId,
+      );
+
+      setReadingProgressByUser(updatedReadingProgressByUser);
+      saveAllReadingProgress(updatedReadingProgressByUser);
+    } catch (error) {
+      setUserWorksError(
+        error.message ||
+          "Не вдалося видалити твір. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setDeletingWorkId(null);
+    }
   };
 
   /**
@@ -536,93 +558,102 @@ export default function CabinetPage() {
           !userWorksError &&
           filteredUserWorks.length > 0 && (
           <div className="cabinet__list">
-            {filteredUserWorks.map((work) => (
-              <article
-                className="cabinet__work"
-                key={`${work.statusType}-${work.id}`}
-              >
-                <img
-                  className="cabinet__work-cover"
-                  src={work.cover}
-                  alt={work.title}
-                />
+            {filteredUserWorks.map((work) => {
+              const isDeleting =
+                  String(deletingWorkId) === String(work.id);
 
-                <div className="cabinet__work-info">
-                  <div className="cabinet__work-top">
-                    <div>
-                      <h3 className="cabinet__work-title">{work.title}</h3>
-                      <p className="cabinet__work-author">{work.author}</p>
-                    </div>
+              return (
+                <article
+                  className="cabinet__work"
+                  key={`${work.statusType}-${work.id}`}
+                >
+                  <img
+                    className="cabinet__work-cover"
+                    src={work.cover}
+                    alt={work.title}
+                  />
 
-                    <span
-                      className={`cabinet__status cabinet__status--${work.statusType}`}
-                    >
-                      {work.displayStatus}
-                    </span>
-                  </div>
+                  <div className="cabinet__work-info">
+                    <div className="cabinet__work-top">
+                      <div>
+                        <h3 className="cabinet__work-title">{work.title}</h3>
+                        <p className="cabinet__work-author">{work.author}</p>
+                      </div>
 
-                  <p className="cabinet__work-description">
-                    {work.description}
-                  </p>
-
-                  {work.statusType === "pending" && (
-                    <span className="cabinet__note">
-                        Твір очікує перевірки модератором.
-                    </span>
-                  )}
-
-                  {work.statusType === "approved" && (
-                    <span className="cabinet__note cabinet__note--approved">
-                        Твір опубліковано{" "}
-                      {work.approvedAt
-                        ? new Date(work.approvedAt).toLocaleDateString(
-                          "uk-UA",
-                        )
-                        : ""}
-                        .
-                    </span>
-                  )}
-
-                  {work.statusType === "rejected" && (
-                    <div className="cabinet__moderation-history">
-                      <strong>Причина відхилення:</strong>
-                      <p>{work.rejectionReason || "Причину не вказано."}</p>
-                      <span>
-                          Дата відхилення:{" "}
-                        {work.rejectedAt
-                          ? new Date(work.rejectedAt).toLocaleDateString(
-                            "uk-UA",
-                          )
-                          : "—"}
+                      <span
+                        className={`cabinet__status cabinet__status--${work.statusType}`}
+                      >
+                        {work.displayStatus}
                       </span>
                     </div>
-                  )}
 
-                  <div className="cabinet__work-actions">
-                    {work.statusType === "approved" && (
-                      <Link className="cabinet__link" to={`/works/${work.id}`}>
-                          Перейти до твору
-                      </Link>
+                    <p className="cabinet__work-description">
+                      {work.description}
+                    </p>
+
+                    {work.statusType === "pending" && (
+                      <span className="cabinet__note">
+                          Твір очікує перевірки модератором.
+                      </span>
                     )}
 
-                    <Link
-                      className="cabinet__link cabinet__link--secondary"
-                      to={`/works/edit/${work.id}`}
-                    >
-                      Редагувати
-                    </Link>
+                    {work.statusType === "approved" && (
+                      <span className="cabinet__note cabinet__note--approved">
+                          Твір опубліковано{" "}
+                        {work.approvedAt
+                          ? new Date(work.approvedAt).toLocaleDateString(
+                            "uk-UA",
+                          )
+                          : ""}
+                          .
+                      </span>
+                    )}
 
-                    <button
-                      className="cabinet__delete"
-                      type="button"
-                      onClick={() => deleteOwnWork(work.id)}
-                    >
-                      Видалити
-                    </button>
+                    {work.statusType === "rejected" && (
+                      <div className="cabinet__moderation-history">
+                        <strong>Причина відхилення:</strong>
+                        <p>{work.rejectionReason || "Причину не вказано."}</p>
+                        <span>
+                            Дата відхилення:{" "}
+                          {work.rejectedAt
+                            ? new Date(work.rejectedAt).toLocaleDateString(
+                              "uk-UA",
+                            )
+                            : "—"}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="cabinet__work-actions">
+                      {work.statusType === "approved" && (
+                        <Link
+                          className="cabinet__link"
+                          to={`/works/${work.id}`}
+                        >
+                          Перейти до твору
+                        </Link>
+                      )}
+
+                      <Link
+                        className="cabinet__link cabinet__link--secondary"
+                        to={`/works/edit/${work.id}`}
+                      >
+                        Редагувати
+                      </Link>
+
+                      <button
+                        className="cabinet__delete"
+                        type="button"
+                        onClick={() => deleteOwnWork(work.id)}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? "Видаляємо..." : "Видалити"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
