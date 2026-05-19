@@ -1,4 +1,4 @@
-const { query } = require("./db");
+const { query, transaction } = require("./db");
 
 /**
  * Перетворює запис твору з PostgreSQL у формат для frontend.
@@ -126,8 +126,6 @@ async function getPendingWorksForModeration() {
 /**
  * Повертає всі твори конкретного користувача.
  *
- * Використовується для блоку "Мої твори" в особистому кабінеті.
- *
  * @param {string} authorId - ID автора з JWT.
  * @returns {Promise<Object[]>} Список творів користувача.
  */
@@ -215,13 +213,6 @@ async function getWorkById(workId) {
  * Створює новий твір і його сторінки у PostgreSQL.
  *
  * @param {Object} workData - Дані нового твору.
- * @param {string} workData.title - Назва твору.
- * @param {string} workData.author - Автор твору.
- * @param {string} workData.authorId - ID автора.
- * @param {string} workData.genre - Жанр твору.
- * @param {string} workData.description - Опис твору.
- * @param {string} workData.cover - Посилання на обкладинку.
- * @param {string[]} workData.pages - Сторінки твору.
  * @returns {Promise<Object>} Створений твір зі сторінками.
  */
 async function createWork(workData) {
@@ -235,67 +226,185 @@ async function createWork(workData) {
     pages,
   } = workData;
 
-  const createdWorkResult = await query(
-    `
-      INSERT INTO works (
+  return transaction(async (client) => {
+    const createdWorkResult = await client.query(
+      `
+        INSERT INTO works (
+          title,
+          author,
+          author_id,
+          genre,
+          description,
+          cover,
+          status,
+          rating,
+          submitted_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+        RETURNING
+          id,
+          title,
+          author,
+          author_id,
+          genre,
+          description,
+          cover,
+          status,
+          rating,
+          submitted_at,
+          approved_at,
+          rejected_at,
+          rejection_reason,
+          created_at,
+          updated_at
+      `,
+      [
         title,
         author,
-        author_id,
+        authorId,
         genre,
         description,
         cover,
-        status,
-        rating,
-        submitted_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
-      RETURNING
-        id,
-        title,
-        author,
-        author_id,
-        genre,
-        description,
-        cover,
-        status,
-        rating,
-        submitted_at,
-        approved_at,
-        rejected_at,
-        rejection_reason,
-        created_at,
-        updated_at
-    `,
-    [
-      title,
-      author,
-      authorId,
-      genre,
-      description,
-      cover,
-      "pending",
-      0,
-    ],
-  );
+        "pending",
+        0,
+      ],
+    );
 
-  const createdWork = mapWorkRow(createdWorkResult.rows[0]);
+    const createdWork = mapWorkRow(createdWorkResult.rows[0]);
 
-  await Promise.all(
-    pages.map((pageContent, index) =>
-      query(
-        `
-          INSERT INTO work_pages (work_id, page_number, content)
-          VALUES ($1, $2, $3)
-        `,
-        [createdWork.id, index + 1, pageContent],
+    await Promise.all(
+      pages.map((pageContent, index) =>
+        client.query(
+          `
+            INSERT INTO work_pages (work_id, page_number, content)
+            VALUES ($1, $2, $3)
+          `,
+          [createdWork.id, index + 1, pageContent],
+        ),
       ),
-    ),
+    );
+
+    return {
+      ...createdWork,
+      pages,
+    };
+  });
+}
+
+/**
+ * Оновлює власний твір користувача.
+ *
+ * Після редагування твір знову переходить у статус pending.
+ *
+ * @param {number|string} workId - ID твору.
+ * @param {string} authorId - ID автора.
+ * @param {Object} workData - Нові дані твору.
+ * @returns {Promise<Object|null>} Оновлений твір або null.
+ */
+async function updateOwnWorkById(workId, authorId, workData) {
+  const {
+    title,
+    genre,
+    description,
+    cover,
+    pages,
+  } = workData;
+
+  return transaction(async (client) => {
+    const updatedWorkResult = await client.query(
+      `
+        UPDATE works
+        SET
+          title = $1,
+          genre = $2,
+          description = $3,
+          cover = $4,
+          status = $5,
+          submitted_at = CURRENT_TIMESTAMP,
+          approved_at = NULL,
+          rejected_at = NULL,
+          rejection_reason = NULL,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $6 AND author_id = $7
+        RETURNING
+          id,
+          title,
+          author,
+          author_id,
+          genre,
+          description,
+          cover,
+          status,
+          rating,
+          submitted_at,
+          approved_at,
+          rejected_at,
+          rejection_reason,
+          created_at,
+          updated_at
+      `,
+      [
+        title,
+        genre,
+        description,
+        cover,
+        "pending",
+        workId,
+        authorId,
+      ],
+    );
+
+    if (updatedWorkResult.rows.length === 0) {
+      return null;
+    }
+
+    await client.query(
+      `
+        DELETE FROM work_pages
+        WHERE work_id = $1
+      `,
+      [workId],
+    );
+
+    await Promise.all(
+      pages.map((pageContent, index) =>
+        client.query(
+          `
+            INSERT INTO work_pages (work_id, page_number, content)
+            VALUES ($1, $2, $3)
+          `,
+          [workId, index + 1, pageContent],
+        ),
+      ),
+    );
+
+    return {
+      ...mapWorkRow(updatedWorkResult.rows[0]),
+      pages,
+    };
+  });
+}
+
+/**
+ * Видаляє власний твір користувача.
+ *
+ * Сторінки твору видаляються автоматично через ON DELETE CASCADE.
+ *
+ * @param {number|string} workId - ID твору.
+ * @param {string} authorId - ID автора.
+ * @returns {Promise<boolean>} true, якщо твір видалено.
+ */
+async function deleteOwnWorkById(workId, authorId) {
+  const result = await query(
+    `
+      DELETE FROM works
+      WHERE id = $1 AND author_id = $2
+      RETURNING id
+    `,
+    [workId, authorId],
   );
 
-  return {
-    ...createdWork,
-    pages,
-  };
+  return result.rows.length > 0;
 }
 
 /**
@@ -393,6 +502,8 @@ module.exports = {
   getWorksByAuthorId,
   getWorkById,
   createWork,
+  updateOwnWorkById,
+  deleteOwnWorkById,
   approveWorkById,
   rejectWorkById,
 };

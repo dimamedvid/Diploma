@@ -72,6 +72,36 @@ export function createWork(workData, token) {
 }
 
 /**
+ * Редагує власний твір користувача.
+ *
+ * @param {number|string} workId - ID твору.
+ * @param {Object} workData - Нові дані твору.
+ * @param {string} token - JWT-токен користувача.
+ * @returns {Promise<Object>} Оновлений твір.
+ */
+export function updateWork(workId, workData, token) {
+  return request(`/api/works/${workId}`, {
+    method: "PUT",
+    headers: getAuthHeader(token),
+    body: JSON.stringify(workData),
+  });
+}
+
+/**
+ * Видаляє власний твір користувача.
+ *
+ * @param {number|string} workId - ID твору.
+ * @param {string} token - JWT-токен користувача.
+ * @returns {Promise<Object>} Результат видалення.
+ */
+export function deleteWork(workId, token) {
+  return request(`/api/works/${workId}`, {
+    method: "DELETE",
+    headers: getAuthHeader(token),
+  });
+}
+
+/**
  * Отримує твори поточного користувача.
  *
  * @param {string} token - JWT-токен користувача.

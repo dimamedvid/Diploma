@@ -5,8 +5,6 @@ const log = createModuleLogger("db");
 
 /**
  * Пул підключень до PostgreSQL.
- *
- * Використовується для виконання SQL-запитів до бази даних.
  */
 const pool = new Pool({
   host: process.env.DB_HOST || "localhost",
@@ -25,6 +23,33 @@ const pool = new Pool({
  */
 function query(text, params = []) {
   return pool.query(text, params);
+}
+
+/**
+ * Виконує кілька SQL-запитів в одній транзакції.
+ *
+ * Якщо один із запитів впаде, всі зміни відкотяться.
+ *
+ * @param {Function} callback - Функція, яка отримує client і виконує запити.
+ * @returns {Promise<unknown>} Результат callback.
+ */
+async function transaction(callback) {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const result = await callback(client);
+
+    await client.query("COMMIT");
+
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -59,6 +84,7 @@ function closePool() {
 
 module.exports = {
   query,
+  transaction,
   checkDbConnection,
   closePool,
 };

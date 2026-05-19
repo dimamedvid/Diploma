@@ -80,3 +80,20 @@
 2026-05-19 20:32:01 [INFO] [request] HTTP request started {"requestId":"5505790c-4e3a-4149-82c6-bea12adb94c2","method":"GET","url":"/api/works/my","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
 2026-05-19 20:32:01 [INFO] [work.routes] Current user works requested {"requestId":"5505790c-4e3a-4149-82c6-bea12adb94c2","authorId":"1765592205256","count":5}
 2026-05-19 20:32:01 [INFO] [request] HTTP request finished {"requestId":"5505790c-4e3a-4149-82c6-bea12adb94c2","method":"GET","url":"/api/works/my","statusCode":304,"durationMs":3,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
+2026-05-19 20:34:26 [INFO] [request] HTTP request started {"requestId":"d0033536-8d8d-442b-9a78-0105f679c65c","method":"GET","url":"/api/works/4","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:34:26 [INFO] [request] HTTP request finished {"requestId":"d0033536-8d8d-442b-9a78-0105f679c65c","method":"GET","url":"/api/works/4","statusCode":304,"durationMs":34,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:34:28 [INFO] [request] HTTP request started {"requestId":"f2c6c3a3-5c55-43c0-b054-4be9493dacfa","method":"GET","url":"/api/works/my","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:34:28 [INFO] [work.routes] Current user works requested {"requestId":"f2c6c3a3-5c55-43c0-b054-4be9493dacfa","authorId":"1765592205256","count":5}
+2026-05-19 20:34:28 [INFO] [request] HTTP request finished {"requestId":"f2c6c3a3-5c55-43c0-b054-4be9493dacfa","method":"GET","url":"/api/works/my","statusCode":304,"durationMs":2,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
+2026-05-19 20:34:40 [INFO] [request] HTTP request started {"requestId":"ca3b8a9a-d030-4e28-8b0a-1407b9a0f3bd","method":"GET","url":"/api/works/my","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:34:40 [INFO] [work.routes] Current user works requested {"requestId":"ca3b8a9a-d030-4e28-8b0a-1407b9a0f3bd","authorId":"1765592205256","count":5}
+2026-05-19 20:34:40 [INFO] [request] HTTP request finished {"requestId":"ca3b8a9a-d030-4e28-8b0a-1407b9a0f3bd","method":"GET","url":"/api/works/my","statusCode":304,"durationMs":33,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
+2026-05-19 20:34:47 [INFO] [request] HTTP request started {"requestId":"15a1d627-c1ad-4f7f-92ba-b4abbf404ff0","method":"GET","url":"/api/works","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:34:47 [INFO] [work.routes] Published works requested {"requestId":"15a1d627-c1ad-4f7f-92ba-b4abbf404ff0"}
+2026-05-19 20:34:47 [INFO] [request] HTTP request finished {"requestId":"15a1d627-c1ad-4f7f-92ba-b4abbf404ff0","method":"GET","url":"/api/works","statusCode":200,"durationMs":1,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:46:24 [INFO] [request] HTTP request started {"requestId":"30adbed5-72c4-41f3-8cca-dcf7bf1c83ed","method":"GET","url":"/api/works","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:46:24 [INFO] [work.routes] Published works requested {"requestId":"30adbed5-72c4-41f3-8cca-dcf7bf1c83ed"}
+2026-05-19 20:46:24 [INFO] [request] HTTP request finished {"requestId":"30adbed5-72c4-41f3-8cca-dcf7bf1c83ed","method":"GET","url":"/api/works","statusCode":304,"durationMs":32,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:47:24 [INFO] [request] HTTP request started {"requestId":"bd816a9b-3ac9-4f3c-b6f8-c669bfdb3503","method":"PUT","url":"/api/works/ID","ip":"::ffff:127.0.0.1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:47:24 [WARNING] [request] HTTP request finished with client error {"requestId":"bd816a9b-3ac9-4f3c-b6f8-c669bfdb3503","method":"PUT","url":"/api/works/ID","statusCode":404,"durationMs":1,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 20:47:35 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}
