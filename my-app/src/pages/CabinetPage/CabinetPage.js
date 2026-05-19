@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import worksData from "../../data/works.json";
@@ -33,28 +33,41 @@ import {
   saveFavoriteGenresByUser,
   toggleFavoriteGenreForUser,
 } from "../../utils/favoriteGenresStorage";
-import {
-  deleteUserWorkByStatus,
-  getApprovedWorks,
-  getPendingWorks,
-  getRejectedWorks,
-  getUserWorksByStatus,
-  saveAllModerationWorks,
-} from "../../utils/moderationStorage";
+import { getMyWorks } from "../../api/worksApi";
 import "./CabinetPage.css";
+
+/**
+ * Повертає зручний статус твору для відображення в кабінеті.
+ *
+ * @param {Object} work - Твір з backend.
+ * @returns {Object} Твір зі статусом для UI.
+ */
+function mapUserWorkStatus(work) {
+  const statusMap = {
+    pending: "На модерації",
+    approved: "Опубліковано",
+    rejected: "Відхилено",
+  };
+
+  return {
+    ...work,
+    statusType: work.status,
+    displayStatus: statusMap[work.status] || "Невідомий статус",
+  };
+}
 
 /**
  * Сторінка особистого кабінету авторизованого користувача.
  *
  * Відображає дані користувача, прогрес читання, улюблені жанри,
- * власні твори, обране, коментарі та оцінки.
+ * власні твори з PostgreSQL, обране, коментарі та оцінки.
  *
  * @returns {JSX.Element} Сторінка особистого кабінету.
  */
 export default function CabinetPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
+  const { user, token } = useSelector((state) => state.auth);
 
   const [worksFilter, setWorksFilter] = useState("all");
 
@@ -70,11 +83,9 @@ export default function CabinetPage() {
     getAllCommentsByWork(),
   );
 
-  const [pendingWorks, setPendingWorks] = useState(() => getPendingWorks());
-  const [approvedUserWorks, setApprovedUserWorks] = useState(() =>
-    getApprovedWorks(),
-  );
-  const [rejectedWorks, setRejectedWorks] = useState(() => getRejectedWorks());
+  const [userWorks, setUserWorks] = useState([]);
+  const [isUserWorksLoading, setIsUserWorksLoading] = useState(true);
+  const [userWorksError, setUserWorksError] = useState("");
 
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState("");
@@ -106,13 +117,6 @@ export default function CabinetPage() {
 
   const favoriteWorks = getFavoriteWorks(allPublishedWorks, favoriteIds);
 
-  const userWorks = getUserWorksByStatus(
-    userId,
-    pendingWorks,
-    approvedUserWorks,
-    rejectedWorks,
-  );
-
   const filteredUserWorks = userWorks.filter((work) => {
     if (worksFilter === "all") {
       return true;
@@ -126,6 +130,55 @@ export default function CabinetPage() {
     commentsByWork,
     userId,
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    /**
+     * Завантажує власні твори користувача з backend.
+     *
+     * @returns {Promise<void>}
+     */
+    const loadUserWorks = async () => {
+      if (!token) {
+        setIsUserWorksLoading(false);
+        setUserWorksError("Щоб переглянути власні твори, потрібно увійти.");
+        return;
+      }
+
+      try {
+        setIsUserWorksLoading(true);
+        setUserWorksError("");
+
+        const works = await getMyWorks(token);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setUserWorks(works.map(mapUserWorkStatus));
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setUserWorksError(
+          error.message ||
+            "Не вдалося завантажити ваші твори. Перевірте backend.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsUserWorksLoading(false);
+        }
+      }
+    };
+
+    loadUserWorks();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
 
   /**
    * Виконує вихід користувача з акаунту.
@@ -185,41 +238,24 @@ export default function CabinetPage() {
   };
 
   /**
-   * Видаляє власний твір користувача.
+   * Тимчасово прибирає твір зі списку в кабінеті.
+   *
+   * Повне видалення з PostgreSQL зробимо окремим backend endpoint.
    *
    * @param {number|string} workId - ID твору.
-   * @param {string} statusType - Статус твору.
    * @returns {void}
    */
-  const deleteOwnWork = (workId, statusType) => {
+  const deleteOwnWork = (workId) => {
     const shouldDelete = window.confirm(
-      "Ви впевнені, що хочете видалити цей твір?",
+      "Повне видалення з бази даних ще не підключене. Тимчасово прибрати твір зі списку в кабінеті?",
     );
 
     if (!shouldDelete) {
       return;
     }
 
-    const {
-      updatedPendingWorks,
-      updatedApprovedWorks,
-      updatedRejectedWorks,
-    } = deleteUserWorkByStatus({
-      workId,
-      statusType,
-      pendingWorks,
-      approvedWorks: approvedUserWorks,
-      rejectedWorks,
-    });
-
-    setPendingWorks(updatedPendingWorks);
-    setApprovedUserWorks(updatedApprovedWorks);
-    setRejectedWorks(updatedRejectedWorks);
-
-    saveAllModerationWorks(
-      updatedPendingWorks,
-      updatedApprovedWorks,
-      updatedRejectedWorks,
+    setUserWorks((works) =>
+      works.filter((work) => String(work.id) !== String(workId)),
     );
   };
 
@@ -480,11 +516,25 @@ export default function CabinetPage() {
           </button>
         </div>
 
-        {filteredUserWorks.length === 0 ? (
+        {isUserWorksLoading && (
+          <p className="cabinet__empty">Завантажуємо ваші твори...</p>
+        )}
+
+        {!isUserWorksLoading && userWorksError && (
+          <p className="cabinet__empty">{userWorksError}</p>
+        )}
+
+        {!isUserWorksLoading &&
+          !userWorksError &&
+          filteredUserWorks.length === 0 && (
           <p className="cabinet__empty">
-            Немає творів для вибраного фільтра.
+              Немає творів для вибраного фільтра.
           </p>
-        ) : (
+        )}
+
+        {!isUserWorksLoading &&
+          !userWorksError &&
+          filteredUserWorks.length > 0 && (
           <div className="cabinet__list">
             {filteredUserWorks.map((work) => (
               <article
@@ -517,13 +567,19 @@ export default function CabinetPage() {
 
                   {work.statusType === "pending" && (
                     <span className="cabinet__note">
-                      Твір очікує перевірки модератором.
+                        Твір очікує перевірки модератором.
                     </span>
                   )}
 
                   {work.statusType === "approved" && (
                     <span className="cabinet__note cabinet__note--approved">
-                      Твір опубліковано {work.approvedAt || ""}.
+                        Твір опубліковано{" "}
+                      {work.approvedAt
+                        ? new Date(work.approvedAt).toLocaleDateString(
+                          "uk-UA",
+                        )
+                        : ""}
+                        .
                     </span>
                   )}
 
@@ -531,14 +587,21 @@ export default function CabinetPage() {
                     <div className="cabinet__moderation-history">
                       <strong>Причина відхилення:</strong>
                       <p>{work.rejectionReason || "Причину не вказано."}</p>
-                      <span>Дата відхилення: {work.rejectedAt || "—"}</span>
+                      <span>
+                          Дата відхилення:{" "}
+                        {work.rejectedAt
+                          ? new Date(work.rejectedAt).toLocaleDateString(
+                            "uk-UA",
+                          )
+                          : "—"}
+                      </span>
                     </div>
                   )}
 
                   <div className="cabinet__work-actions">
                     {work.statusType === "approved" && (
                       <Link className="cabinet__link" to={`/works/${work.id}`}>
-                        Перейти до твору
+                          Перейти до твору
                       </Link>
                     )}
 
@@ -552,7 +615,7 @@ export default function CabinetPage() {
                     <button
                       className="cabinet__delete"
                       type="button"
-                      onClick={() => deleteOwnWork(work.id, work.statusType)}
+                      onClick={() => deleteOwnWork(work.id)}
                     >
                       Видалити
                     </button>
