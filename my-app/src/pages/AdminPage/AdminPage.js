@@ -1,14 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import {
-  approveWorkById,
-  getApprovedWorks,
-  getPendingWorks,
-  getRejectedWorks,
-  rejectWorkById,
-  saveApprovedWorks,
-  savePendingWorks,
-  saveRejectedWorks,
-} from "../../utils/moderationStorage";
+  approveWork,
+  getPendingWorksForModeration,
+  rejectWork,
+} from "../../api/worksApi";
 import "./AdminPage.css";
 
 /**
@@ -25,24 +21,86 @@ function renderParagraphs(text) {
 }
 
 /**
+ * Перевіряє, чи користувач має доступ до модерації.
+ *
+ * @param {Object|null} user - Поточний користувач.
+ * @returns {boolean} true, якщо роль moderator або admin.
+ */
+function canModerate(user) {
+  return ["moderator", "admin"].includes(user?.role);
+}
+
+/**
  * Сторінка модерації користувацьких творів.
  *
- * Дозволяє переглядати всі сторінки твору,
- * підтверджувати публікацію або відхиляти твір із причиною.
+ * Завантажує твори зі статусом pending з backend,
+ * дозволяє підтверджувати або відхиляти їх через PostgreSQL.
  *
  * @returns {JSX.Element} Сторінка адміністратора/модератора.
  */
 export default function AdminPage() {
-  const [pendingWorks, setPendingWorks] = useState(() => getPendingWorks());
-  const [approvedWorks, setApprovedWorks] = useState(() => getApprovedWorks());
-  const [rejectedWorks, setRejectedWorks] = useState(() => getRejectedWorks());
+  const { user, token } = useSelector((state) => state.auth);
 
+  const [pendingWorks, setPendingWorks] = useState([]);
   const [currentPagesByWork, setCurrentPagesByWork] = useState({});
   const [rejectingWorkId, setRejectingWorkId] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionError, setRejectionError] = useState("");
+  const [pageError, setPageError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [processingWorkId, setProcessingWorkId] = useState(null);
 
   const pendingCount = useMemo(() => pendingWorks.length, [pendingWorks]);
+  const hasAccess = Boolean(token) && canModerate(user);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    /**
+     * Завантажує твори, які очікують модерації.
+     *
+     * @returns {Promise<void>}
+     */
+    const loadPendingWorks = async () => {
+      if (!hasAccess) {
+        setIsLoading(false);
+        setPageError("У вас немає доступу до сторінки модерації.");
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setPageError("");
+
+        const works = await getPendingWorksForModeration(token);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setPendingWorks(works);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setPageError(
+          error.message ||
+            "Не вдалося завантажити твори на модерації. Перевірте backend.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadPendingWorks();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hasAccess, token]);
 
   /**
    * Повертає номер поточної сторінки для твору.
@@ -64,7 +122,7 @@ export default function AdminPage() {
   const setCurrentPageForWork = (workId, pageIndex) => {
     setCurrentPagesByWork((previousPages) => ({
       ...previousPages,
-      [workId]: pageIndex,
+      [String(workId)]: pageIndex,
     }));
   };
 
@@ -96,28 +154,34 @@ export default function AdminPage() {
   };
 
   /**
-   * Підтверджує твір і переносить його до опублікованих.
+   * Підтверджує твір через backend.
    *
    * @param {number|string} workId - ID твору.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const approveWork = (workId) => {
-    const { updatedPendingWorks, updatedApprovedWorks } = approveWorkById(
-      pendingWorks,
-      approvedWorks,
-      workId,
-    );
+  const handleApproveWork = async (workId) => {
+    try {
+      setProcessingWorkId(workId);
+      setPageError("");
 
-    setPendingWorks(updatedPendingWorks);
-    setApprovedWorks(updatedApprovedWorks);
+      await approveWork(workId, token);
 
-    savePendingWorks(updatedPendingWorks);
-    saveApprovedWorks(updatedApprovedWorks);
+      setPendingWorks((works) =>
+        works.filter((work) => String(work.id) !== String(workId)),
+      );
 
-    if (rejectingWorkId === workId) {
-      setRejectingWorkId(null);
-      setRejectionReason("");
-      setRejectionError("");
+      if (rejectingWorkId === workId) {
+        setRejectingWorkId(null);
+        setRejectionReason("");
+        setRejectionError("");
+      }
+    } catch (error) {
+      setPageError(
+        error.message ||
+          "Не вдалося підтвердити твір. Перевірте backend і права користувача.",
+      );
+    } finally {
+      setProcessingWorkId(null);
     }
   };
 
@@ -131,6 +195,7 @@ export default function AdminPage() {
     setRejectingWorkId(workId);
     setRejectionReason("");
     setRejectionError("");
+    setPageError("");
   };
 
   /**
@@ -145,12 +210,12 @@ export default function AdminPage() {
   };
 
   /**
-   * Відхиляє твір, зберігає причину відхилення і переносить його в історію.
+   * Відхиляє твір через backend.
    *
    * @param {number|string} workId - ID твору.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const confirmRejectWork = (workId) => {
+  const confirmRejectWork = async (workId) => {
     const normalizedReason = rejectionReason.trim();
 
     if (!normalizedReason) {
@@ -158,23 +223,42 @@ export default function AdminPage() {
       return;
     }
 
-    const { updatedPendingWorks, updatedRejectedWorks } = rejectWorkById(
-      pendingWorks,
-      rejectedWorks,
-      workId,
-      normalizedReason,
-    );
+    try {
+      setProcessingWorkId(workId);
+      setPageError("");
+      setRejectionError("");
 
-    setPendingWorks(updatedPendingWorks);
-    setRejectedWorks(updatedRejectedWorks);
+      await rejectWork(workId, normalizedReason, token);
 
-    savePendingWorks(updatedPendingWorks);
-    saveRejectedWorks(updatedRejectedWorks);
+      setPendingWorks((works) =>
+        works.filter((work) => String(work.id) !== String(workId)),
+      );
 
-    setRejectingWorkId(null);
-    setRejectionReason("");
-    setRejectionError("");
+      setRejectingWorkId(null);
+      setRejectionReason("");
+    } catch (error) {
+      setPageError(
+        error.message ||
+          "Не вдалося відхилити твір. Перевірте backend і права користувача.",
+      );
+    } finally {
+      setProcessingWorkId(null);
+    }
   };
+
+  if (!hasAccess && !isLoading) {
+    return (
+      <section className="admin">
+        <div className="admin__card">
+          <h1 className="admin__title">Модерація творів</h1>
+          <p className="admin__subtitle">
+            У вас немає доступу до цієї сторінки. Потрібна роль модератора або
+            адміністратора.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="admin">
@@ -188,15 +272,26 @@ export default function AdminPage() {
         <div className="admin__counter">Очікують модерації: {pendingCount}</div>
       </div>
 
-      {pendingWorks.length === 0 ? (
+      {isLoading && (
+        <div className="admin__empty">Завантажуємо твори на модерації...</div>
+      )}
+
+      {!isLoading && pageError && (
+        <div className="admin__empty">{pageError}</div>
+      )}
+
+      {!isLoading && !pageError && pendingWorks.length === 0 ? (
         <div className="admin__empty">Немає творів, які очікують модерації.</div>
-      ) : (
+      ) : null}
+
+      {!isLoading && pendingWorks.length > 0 && (
         <div className="admin__list">
           {pendingWorks.map((work) => {
             const pages = work.pages || [];
             const currentPage = getCurrentPage(work.id);
             const pageText = pages[currentPage] || "Текст твору відсутній.";
             const isRejecting = rejectingWorkId === work.id;
+            const isProcessing = String(processingWorkId) === String(work.id);
 
             return (
               <article className="admin__work" key={work.id}>
@@ -238,7 +333,7 @@ export default function AdminPage() {
                           className="admin__reader-button"
                           type="button"
                           onClick={() => goToPreviousPage(work)}
-                          disabled={currentPage === 0}
+                          disabled={currentPage === 0 || isProcessing}
                         >
                           Попередня
                         </button>
@@ -247,7 +342,9 @@ export default function AdminPage() {
                           className="admin__reader-button"
                           type="button"
                           onClick={() => goToNextPage(work)}
-                          disabled={currentPage === pages.length - 1}
+                          disabled={
+                            currentPage === pages.length - 1 || isProcessing
+                          }
                         >
                           Наступна
                         </button>
@@ -268,6 +365,7 @@ export default function AdminPage() {
                           }}
                           placeholder="Наприклад: потрібно виправити оформлення, додати опис або доопрацювати текст."
                           rows="4"
+                          disabled={isProcessing}
                         />
                       </label>
 
@@ -282,14 +380,18 @@ export default function AdminPage() {
                           className="admin__button admin__button--reject"
                           type="button"
                           onClick={() => confirmRejectWork(work.id)}
+                          disabled={isProcessing}
                         >
-                          Підтвердити відхилення
+                          {isProcessing
+                            ? "Відхиляємо..."
+                            : "Підтвердити відхилення"}
                         </button>
 
                         <button
                           className="admin__button admin__button--secondary"
                           type="button"
                           onClick={cancelRejectingWork}
+                          disabled={isProcessing}
                         >
                           Скасувати
                         </button>
@@ -302,15 +404,17 @@ export default function AdminPage() {
                       <button
                         className="admin__button admin__button--approve"
                         type="button"
-                        onClick={() => approveWork(work.id)}
+                        onClick={() => handleApproveWork(work.id)}
+                        disabled={isProcessing}
                       >
-                        Підтвердити
+                        {isProcessing ? "Підтверджуємо..." : "Підтвердити"}
                       </button>
 
                       <button
                         className="admin__button admin__button--reject"
                         type="button"
                         onClick={() => startRejectingWork(work.id)}
+                        disabled={isProcessing}
                       >
                         Відхилити
                       </button>

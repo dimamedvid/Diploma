@@ -26,6 +26,18 @@ async function request(path, options = {}) {
 }
 
 /**
+ * Повертає заголовок авторизації.
+ *
+ * @param {string} token - JWT-токен.
+ * @returns {Object} Headers з Authorization.
+ */
+function getAuthHeader(token) {
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+/**
  * Отримує список опублікованих творів з backend.
  *
  * @returns {Promise<Object[]>} Список творів.
@@ -54,9 +66,49 @@ export function getWorkById(workId) {
 export function createWork(workData, token) {
   return request("/api/works", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: getAuthHeader(token),
     body: JSON.stringify(workData),
+  });
+}
+
+/**
+ * Отримує твори, які очікують модерації.
+ *
+ * @param {string} token - JWT-токен модератора або адміністратора.
+ * @returns {Promise<Object[]>} Список pending-творів.
+ */
+export function getPendingWorksForModeration(token) {
+  return request("/api/works/moderation/pending", {
+    headers: getAuthHeader(token),
+  });
+}
+
+/**
+ * Підтверджує твір.
+ *
+ * @param {number|string} workId - ID твору.
+ * @param {string} token - JWT-токен модератора або адміністратора.
+ * @returns {Promise<Object>} Підтверджений твір.
+ */
+export function approveWork(workId, token) {
+  return request(`/api/works/${workId}/approve`, {
+    method: "PATCH",
+    headers: getAuthHeader(token),
+  });
+}
+
+/**
+ * Відхиляє твір із причиною.
+ *
+ * @param {number|string} workId - ID твору.
+ * @param {string} reason - Причина відхилення.
+ * @param {string} token - JWT-токен модератора або адміністратора.
+ * @returns {Promise<Object>} Відхилений твір.
+ */
+export function rejectWork(workId, reason, token) {
+  return request(`/api/works/${workId}/reject`, {
+    method: "PATCH",
+    headers: getAuthHeader(token),
+    body: JSON.stringify({ reason }),
   });
 }
