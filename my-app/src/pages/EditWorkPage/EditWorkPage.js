@@ -1,15 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { getUserId } from "../../utils/worksStorage";
-import {
-  findWorkForEditing,
-  getApprovedWorks,
-  getPendingWorks,
-  getRejectedWorks,
-  moveEditedWorkToPending,
-  saveAllModerationWorks,
-} from "../../utils/moderationStorage";
+import { getWorkById, updateWork } from "../../api/worksApi";
 import {
   MIN_CONTENT_LENGTH,
   hasTooLongWords,
@@ -35,33 +27,26 @@ function renderParagraphs(text) {
 /**
  * Сторінка редагування власного твору.
  *
- * Якщо редагується опублікований або відхилений твір,
- * після збереження він знову потрапляє на модерацію.
+ * Завантажує твір з backend, дозволяє змінити дані,
+ * після збереження відправляє твір назад на модерацію.
  *
  * @returns {JSX.Element} Форма редагування твору.
  */
 export default function EditWorkPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
 
-  const userId = getUserId(user);
+  const [work, setWork] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const pendingWorks = useMemo(() => getPendingWorks(), []);
-  const approvedWorks = useMemo(() => getApprovedWorks(), []);
-  const rejectedWorks = useMemo(() => getRejectedWorks(), []);
+  const [title, setTitle] = useState("");
+  const [genre, setGenre] = useState("");
+  const [description, setDescription] = useState("");
+  const [cover, setCover] = useState("");
+  const [content, setContent] = useState("");
 
-  const { work, source } = useMemo(() => {
-    return findWorkForEditing(id, pendingWorks, approvedWorks, rejectedWorks);
-  }, [id, pendingWorks, approvedWorks, rejectedWorks]);
-
-  const [title, setTitle] = useState(work?.title || "");
-  const [genre, setGenre] = useState(work?.genre || "");
-  const [description, setDescription] = useState(work?.description || "");
-  const [cover, setCover] = useState(work?.cover || "");
-  const [content, setContent] = useState(
-    work?.pages ? joinPagesForEditing(work.pages) : "",
-  );
   const [error, setError] = useState("");
   const [previewPage, setPreviewPage] = useState(0);
 
@@ -73,28 +58,56 @@ export default function EditWorkPage() {
   const safePreviewPage = Math.min(previewPage, Math.max(pages.length - 1, 0));
   const previewPageText =
     pages[safePreviewPage] || "Текст твору поки не додано.";
-  const isOwner = work?.authorId === userId;
 
-  if (!work || !isOwner) {
-    return (
-      <section className="edit-work">
-        <div className="edit-work__card">
-          <h1 className="edit-work__title">Твір не знайдено</h1>
-          <p className="edit-work__subtitle">
-            Ви не можете редагувати цей твір або він більше не існує.
-          </p>
+  useEffect(() => {
+    let isMounted = true;
 
-          <button
-            className="edit-work__cancel"
-            type="button"
-            onClick={() => navigate("/cabinet")}
-          >
-            Повернутися в кабінет
-          </button>
-        </div>
-      </section>
-    );
-  }
+    /**
+     * Завантажує твір для редагування.
+     *
+     * @returns {Promise<void>}
+     */
+    const loadWork = async () => {
+      try {
+        setIsLoading(true);
+        setError("");
+
+        const workFromApi = await getWorkById(id);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setWork(workFromApi);
+        setTitle(workFromApi.title || "");
+        setGenre(workFromApi.genre || "");
+        setDescription(workFromApi.description || "");
+        setCover(workFromApi.cover || "");
+        setContent(
+          workFromApi.pages ? joinPagesForEditing(workFromApi.pages) : "",
+        );
+      } catch (loadError) {
+        if (!isMounted) {
+          return;
+        }
+
+        setError(
+          loadError.message ||
+            "Не вдалося завантажити твір для редагування.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadWork();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   /**
    * Переходить на попередню сторінку preview.
@@ -115,13 +128,18 @@ export default function EditWorkPage() {
   };
 
   /**
-   * Зберігає зміни твору.
+   * Зберігає зміни твору через backend.
    *
    * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (!token) {
+      setError("Щоб редагувати твір, потрібно увійти в акаунт.");
+      return;
+    }
 
     if (!title.trim() || !genre.trim() || !description.trim()) {
       setError("Заповніть назву, жанр і короткий опис твору.");
@@ -152,40 +170,62 @@ export default function EditWorkPage() {
       return;
     }
 
-    const updatedWork = {
-      ...work,
-      title: title.trim(),
-      genre: genre.trim(),
-      description: description.trim(),
-      cover: cover.trim(),
-      pages,
-      status: "pending",
-      updatedAt: new Date().toLocaleDateString("uk-UA"),
-      rejectedAt: "",
-      rejectionReason: "",
-    };
+    try {
+      setIsSubmitting(true);
+      setError("");
 
-    const {
-      updatedPendingWorks,
-      updatedApprovedWorks,
-      updatedRejectedWorks,
-    } = moveEditedWorkToPending({
-      work,
-      updatedWork,
-      source,
-      pendingWorks,
-      approvedWorks,
-      rejectedWorks,
-    });
+      await updateWork(
+        id,
+        {
+          title: title.trim(),
+          genre: genre.trim(),
+          description: description.trim(),
+          cover: cover.trim(),
+          pages,
+        },
+        token,
+      );
 
-    saveAllModerationWorks(
-      updatedPendingWorks,
-      updatedApprovedWorks,
-      updatedRejectedWorks,
-    );
-
-    navigate("/cabinet");
+      navigate("/cabinet");
+    } catch (submitError) {
+      setError(
+        submitError.message ||
+          "Не вдалося зберегти зміни. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <section className="edit-work">
+        <div className="edit-work__card">
+          <h1 className="edit-work__title">Завантаження твору...</h1>
+        </div>
+      </section>
+    );
+  }
+
+  if (!work) {
+    return (
+      <section className="edit-work">
+        <div className="edit-work__card">
+          <h1 className="edit-work__title">Твір не знайдено</h1>
+
+          {error && <p className="edit-work__error">{error}</p>}
+
+          <button
+            className="edit-work__cancel"
+            type="button"
+            onClick={() => navigate("/cabinet")}
+          >
+            Повернутися в кабінет
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="edit-work">
@@ -194,8 +234,7 @@ export default function EditWorkPage() {
           <h1 className="edit-work__title">Редагувати твір</h1>
 
           <p className="edit-work__subtitle">
-            Після редагування опублікованого або відхиленого твору він знову
-            буде відправлений на модерацію.
+            Після збереження змін твір знову буде відправлений на модерацію.
           </p>
         </div>
 
@@ -208,6 +247,7 @@ export default function EditWorkPage() {
               className="edit-work__input"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
+              disabled={isSubmitting}
             />
           </label>
 
@@ -217,6 +257,7 @@ export default function EditWorkPage() {
               className="edit-work__input"
               value={genre}
               onChange={(event) => setGenre(event.target.value)}
+              disabled={isSubmitting}
             />
           </label>
 
@@ -227,6 +268,7 @@ export default function EditWorkPage() {
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               rows="4"
+              disabled={isSubmitting}
             />
           </label>
 
@@ -236,6 +278,7 @@ export default function EditWorkPage() {
               className="edit-work__input"
               value={cover}
               onChange={(event) => setCover(event.target.value)}
+              disabled={isSubmitting}
             />
           </label>
 
@@ -254,6 +297,7 @@ export default function EditWorkPage() {
                 setPreviewPage(0);
               }}
               rows="14"
+              disabled={isSubmitting}
             />
           </label>
 
@@ -269,8 +313,8 @@ export default function EditWorkPage() {
             </div>
 
             <div className="edit-work__stat">
-              <span>Поточний статус</span>
-              <strong>{source}</strong>
+              <span>Після збереження</span>
+              <strong>На модерації</strong>
             </div>
           </div>
 
@@ -328,7 +372,7 @@ export default function EditWorkPage() {
                     className="edit-work__preview-button"
                     type="button"
                     onClick={goToPreviousPreviewPage}
-                    disabled={safePreviewPage === 0}
+                    disabled={safePreviewPage === 0 || isSubmitting}
                   >
                     Попередня
                   </button>
@@ -337,7 +381,9 @@ export default function EditWorkPage() {
                     className="edit-work__preview-button"
                     type="button"
                     onClick={goToNextPreviewPage}
-                    disabled={safePreviewPage === pages.length - 1}
+                    disabled={
+                      safePreviewPage === pages.length - 1 || isSubmitting
+                    }
                   >
                     Наступна
                   </button>
@@ -347,14 +393,19 @@ export default function EditWorkPage() {
           </section>
 
           <div className="edit-work__actions">
-            <button className="edit-work__submit" type="submit">
-              Зберегти зміни
+            <button
+              className="edit-work__submit"
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Зберігаємо..." : "Зберегти зміни"}
             </button>
 
             <button
               className="edit-work__cancel"
               type="button"
               onClick={() => navigate("/cabinet")}
+              disabled={isSubmitting}
             >
               Скасувати
             </button>

@@ -119,3 +119,12 @@
 2026-05-19 20:51:34 [INFO] [request] HTTP request started {"requestId":"72ce7399-b099-4661-b694-a2562ca6cfc1","method":"DELETE","url":"/api/works/3","ip":"::ffff:127.0.0.1","sessionType":"anonymous","userId":null,"role":null}
 2026-05-19 20:51:34 [INFO] [work.routes] Work deleted {"requestId":"72ce7399-b099-4661-b694-a2562ca6cfc1","workId":"3","authorId":"1765592205256"}
 2026-05-19 20:51:34 [INFO] [request] HTTP request finished {"requestId":"72ce7399-b099-4661-b694-a2562ca6cfc1","method":"DELETE","url":"/api/works/3","statusCode":200,"durationMs":37,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
+2026-05-19 21:02:07 [INFO] [request] HTTP request started {"requestId":"4ea62bf8-abd9-4207-af61-713e6d797e22","method":"GET","url":"/api/works","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 21:02:07 [INFO] [work.routes] Published works requested {"requestId":"4ea62bf8-abd9-4207-af61-713e6d797e22"}
+2026-05-19 21:02:07 [INFO] [request] HTTP request finished {"requestId":"4ea62bf8-abd9-4207-af61-713e6d797e22","method":"GET","url":"/api/works","statusCode":304,"durationMs":35,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 21:02:08 [INFO] [request] HTTP request started {"requestId":"028b36b1-9d90-4fdd-9bb1-5872f0280a7d","method":"GET","url":"/api/works/my","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 21:02:08 [INFO] [work.routes] Current user works requested {"requestId":"028b36b1-9d90-4fdd-9bb1-5872f0280a7d","authorId":"1765592205256","count":4}
+2026-05-19 21:02:08 [INFO] [request] HTTP request finished {"requestId":"028b36b1-9d90-4fdd-9bb1-5872f0280a7d","method":"GET","url":"/api/works/my","statusCode":200,"durationMs":2,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
+2026-05-19 21:02:21 [INFO] [request] HTTP request started {"requestId":"a9a81ae1-70c9-4329-8c17-0139e95c57bf","method":"DELETE","url":"/api/works/6","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-19 21:02:21 [INFO] [work.routes] Work deleted {"requestId":"a9a81ae1-70c9-4329-8c17-0139e95c57bf","workId":"6","authorId":"1765592205256"}
+2026-05-19 21:02:21 [INFO] [request] HTTP request finished {"requestId":"a9a81ae1-70c9-4329-8c17-0139e95c57bf","method":"DELETE","url":"/api/works/6","statusCode":200,"durationMs":35,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
