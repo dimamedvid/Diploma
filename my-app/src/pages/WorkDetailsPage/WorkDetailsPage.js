@@ -1,16 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
-import {
-  getFavoriteWorkIds,
-  isWorkFavorite,
-  saveFavoriteWorkIds,
-  toggleFavoriteWork,
-} from "../../utils/favoritesStorage";
-import {
-  getSavedReadingPage,
-  saveReadingPage,
-} from "../../utils/readingProgressStorage";
 import { getWorkById } from "../../api/worksApi";
 import {
   createWorkComment,
@@ -19,6 +9,11 @@ import {
   toggleCommentLike,
   updateComment,
 } from "../../api/commentsApi";
+import {
+  getFavoriteWorkIdsFromApi,
+  saveReadingProgressToApi,
+  toggleFavoriteWorkInApi,
+} from "../../api/userActivityApi";
 import "./WorkDetailsPage.css";
 
 /**
@@ -85,9 +80,6 @@ function formatDate(value) {
 /**
  * Сторінка детального перегляду твору.
  *
- * Відображає твір, сторінки читання, обране,
- * коментарі, оцінки, лайки, редагування і видалення коментарів.
- *
  * @returns {JSX.Element}
  */
 export default function WorkDetailsPage() {
@@ -103,7 +95,9 @@ export default function WorkDetailsPage() {
   const [commentsError, setCommentsError] = useState("");
 
   const [currentPage, setCurrentPage] = useState(0);
-  const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteWorkIds());
+
+  const [favoriteIds, setFavoriteIds] = useState([]);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
 
   const [commentText, setCommentText] = useState("");
   const [commentRating, setCommentRating] = useState("5");
@@ -122,7 +116,10 @@ export default function WorkDetailsPage() {
   }, [work]);
 
   const pageText = pages[currentPage] || "Текст твору поки не додано.";
-  const isFavorite = work ? isWorkFavorite(favoriteIds, work.id) : false;
+
+  const isFavorite = work
+    ? favoriteIds.some((favoriteId) => String(favoriteId) === String(work.id))
+    : false;
 
   const ratingStats = useMemo(() => {
     return getRatingStats(comments);
@@ -135,11 +132,6 @@ export default function WorkDetailsPage() {
   useEffect(() => {
     let isMounted = true;
 
-    /**
-     * Завантажує твір з backend.
-     *
-     * @returns {Promise<void>}
-     */
     const loadWork = async () => {
       try {
         setIsWorkLoading(true);
@@ -177,11 +169,6 @@ export default function WorkDetailsPage() {
   useEffect(() => {
     let isMounted = true;
 
-    /**
-     * Завантажує коментарі до твору з backend.
-     *
-     * @returns {Promise<void>}
-     */
     const loadComments = async () => {
       try {
         setIsCommentsLoading(true);
@@ -218,60 +205,91 @@ export default function WorkDetailsPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!work || !isAuthorized || pages.length === 0) {
-      return;
-    }
+    let isMounted = true;
 
-    const savedPage = getSavedReadingPage(currentUserId, work.id);
-    const safePage = Math.min(savedPage, pages.length - 1);
+    const loadFavoriteWorks = async () => {
+      if (!token) {
+        setFavoriteIds([]);
+        return;
+      }
 
-    setCurrentPage(safePage);
-  }, [work, isAuthorized, currentUserId, pages.length]);
+      try {
+        const ids = await getFavoriteWorkIdsFromApi(token);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setFavoriteIds(ids);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setWorkError(
+          error.message ||
+            "Не вдалося завантажити обрані твори. Перевірте backend.",
+        );
+      }
+    };
+
+    loadFavoriteWorks();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
 
   useEffect(() => {
     if (!work || !isAuthorized || pages.length === 0) {
       return;
     }
 
-    saveReadingPage(currentUserId, work.id, currentPage);
-  }, [work, isAuthorized, currentUserId, currentPage, pages.length]);
+    saveReadingProgressToApi(work.id, currentPage, token).catch(() => {});
+  }, [work, isAuthorized, token, currentPage, pages.length]);
 
   /**
-   * Перемикає стан твору в обраному.
+   * Перемикає стан твору в обраному через backend.
    *
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const toggleFavorite = () => {
-    const updatedFavoriteIds = toggleFavoriteWork(favoriteIds, work.id);
+  const toggleFavorite = async () => {
+    if (!isAuthorized) {
+      setWorkError("Щоб додати твір в обране, потрібно увійти в акаунт.");
+      return;
+    }
 
-    setFavoriteIds(updatedFavoriteIds);
-    saveFavoriteWorkIds(updatedFavoriteIds);
+    try {
+      setIsFavoriteLoading(true);
+      setWorkError("");
+
+      const result = await toggleFavoriteWorkInApi(work.id, token);
+
+      setFavoriteIds((ids) => {
+        if (result.isFavorite) {
+          return [...ids, String(result.workId)];
+        }
+
+        return ids.filter((favoriteId) => String(favoriteId) !== String(work.id));
+      });
+    } catch (error) {
+      setWorkError(
+        error.message ||
+          "Не вдалося змінити обране. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setIsFavoriteLoading(false);
+    }
   };
 
-  /**
-   * Переходить на попередню сторінку твору.
-   *
-   * @returns {void}
-   */
   const goToPreviousPage = () => {
     setCurrentPage((page) => Math.max(page - 1, 0));
   };
 
-  /**
-   * Переходить на наступну сторінку твору.
-   *
-   * @returns {void}
-   */
   const goToNextPage = () => {
     setCurrentPage((page) => Math.min(page + 1, pages.length - 1));
   };
 
-  /**
-   * Додає коментар через backend.
-   *
-   * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
-   * @returns {Promise<void>}
-   */
   const handleCommentSubmit = async (event) => {
     event.preventDefault();
 
@@ -312,12 +330,6 @@ export default function WorkDetailsPage() {
     }
   };
 
-  /**
-   * Вмикає режим редагування власного коментаря.
-   *
-   * @param {Object} comment - Коментар для редагування.
-   * @returns {void}
-   */
   const startEditingComment = (comment) => {
     setEditingCommentId(comment.id);
     setEditingText(comment.text);
@@ -325,23 +337,12 @@ export default function WorkDetailsPage() {
     setCommentsError("");
   };
 
-  /**
-   * Скасовує редагування коментаря.
-   *
-   * @returns {void}
-   */
   const cancelEditingComment = () => {
     setEditingCommentId(null);
     setEditingText("");
     setEditingRating("5");
   };
 
-  /**
-   * Зберігає змінений коментар через backend.
-   *
-   * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
-   * @returns {Promise<void>}
-   */
   const handleEditSubmit = async (event) => {
     event.preventDefault();
 
@@ -384,12 +385,6 @@ export default function WorkDetailsPage() {
     }
   };
 
-  /**
-   * Додає або прибирає лайк з коментаря через backend.
-   *
-   * @param {number|string} commentId - ID коментаря.
-   * @returns {Promise<void>}
-   */
   const handleToggleCommentLike = async (commentId) => {
     if (!isAuthorized) {
       return;
@@ -418,12 +413,6 @@ export default function WorkDetailsPage() {
     }
   };
 
-  /**
-   * Видаляє власний коментар через backend.
-   *
-   * @param {number|string} commentId - ID коментаря.
-   * @returns {Promise<void>}
-   */
   const deleteOwnComment = async (commentId) => {
     const shouldDelete = window.confirm(
       "Ви впевнені, що хочете видалити цей коментар?",
@@ -524,8 +513,13 @@ export default function WorkDetailsPage() {
             }`}
             type="button"
             onClick={toggleFavorite}
+            disabled={isFavoriteLoading}
           >
-            {isFavorite ? "В обраному" : "Додати в обране"}
+            {isFavoriteLoading
+              ? "Оновлюємо..."
+              : isFavorite
+                ? "В обраному"
+                : "Додати в обране"}
           </button>
         </div>
       </div>
@@ -718,7 +712,7 @@ export default function WorkDetailsPage() {
                           {comment.updatedAt &&
                             comment.updatedAt !== comment.createdAt && (
                             <span className="comments__date">
-                              Змінено: {formatDate(comment.updatedAt)}
+                             Змінено: {formatDate(comment.updatedAt)}
                             </span>
                           )}
                         </div>
