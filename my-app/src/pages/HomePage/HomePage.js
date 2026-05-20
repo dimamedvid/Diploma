@@ -13,6 +13,7 @@ import {
   sortWorksByFavoriteGenres,
 } from "../../utils/favoriteGenresStorage";
 import { getWorks } from "../../api/worksApi";
+import { getFavoriteGenresFromApi } from "../../api/userActivityApi";
 import "./HomePage.css";
 
 /**
@@ -106,7 +107,7 @@ function getLocalFallbackWorks() {
  * @returns {JSX.Element} Головна сторінка з каталогом творів.
  */
 export default function HomePage() {
-  const { user } = useSelector((state) => state.auth);
+  const { user, token } = useSelector((state) => state.auth);
 
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("Всі жанри");
@@ -115,12 +116,13 @@ export default function HomePage() {
   const [sortOption, setSortOption] = useState("recommended");
 
   const [allWorks, setAllWorks] = useState(() => getLocalFallbackWorks());
+  const [favoriteGenres, setFavoriteGenres] = useState(() =>
+    getFavoriteGenresForUser(user),
+  );
+
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState("");
-
-  const favoriteGenres = useMemo(() => {
-    return getFavoriteGenresForUser(user);
-  }, [user]);
+  const [genresError, setGenresError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -167,6 +169,52 @@ export default function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    /**
+     * Завантажує улюблені жанри користувача з backend.
+     *
+     * Якщо користувач не авторизований або backend недоступний,
+     * використовується локальний fallback.
+     *
+     * @returns {Promise<void>}
+     */
+    const loadFavoriteGenres = async () => {
+      if (!token) {
+        setFavoriteGenres(getFavoriteGenresForUser(user));
+        setGenresError("");
+        return;
+      }
+
+      try {
+        const genresFromApi = await getFavoriteGenresFromApi(token);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setFavoriteGenres(genresFromApi);
+        setGenresError("");
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setFavoriteGenres(getFavoriteGenresForUser(user));
+        setGenresError(
+          "Не вдалося завантажити улюблені жанри з backend, використано локальні дані.",
+        );
+      }
+    };
+
+    loadFavoriteGenres();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token, user]);
+
   const genres = useMemo(() => {
     return ["Всі жанри", ...getAvailableGenres(allWorks)];
   }, [allWorks]);
@@ -212,6 +260,10 @@ export default function HomePage() {
 
           {!isLoading && apiError && (
             <p className="results__hint">{apiError}</p>
+          )}
+
+          {!isLoading && genresError && (
+            <p className="results__hint">{genresError}</p>
           )}
 
           {!isLoading &&
