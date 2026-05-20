@@ -11,6 +11,7 @@ import {
 } from "../../api/commentsApi";
 import {
   getFavoriteWorkIdsFromApi,
+  getReadingProgressFromApi,
   saveReadingProgressToApi,
   toggleFavoriteWorkInApi,
 } from "../../api/userActivityApi";
@@ -95,6 +96,8 @@ export default function WorkDetailsPage() {
   const [commentsError, setCommentsError] = useState("");
 
   const [currentPage, setCurrentPage] = useState(0);
+  const [hasLoadedReadingProgress, setHasLoadedReadingProgress] =
+    useState(false);
 
   const [favoriteIds, setFavoriteIds] = useState([]);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
@@ -136,6 +139,7 @@ export default function WorkDetailsPage() {
       try {
         setIsWorkLoading(true);
         setWorkError("");
+        setHasLoadedReadingProgress(false);
 
         const workFromApi = await getWorkById(id);
 
@@ -241,12 +245,75 @@ export default function WorkDetailsPage() {
   }, [token]);
 
   useEffect(() => {
-    if (!work || !isAuthorized || pages.length === 0) {
+    let isMounted = true;
+
+    const loadReadingProgress = async () => {
+      if (!work || !token || pages.length === 0) {
+        setHasLoadedReadingProgress(true);
+        return;
+      }
+
+      try {
+        const progress = await getReadingProgressFromApi(token);
+
+        if (!isMounted) {
+          return;
+        }
+
+        const currentWorkProgress = progress.find(
+          (item) => String(item.workId) === String(work.id),
+        );
+
+        if (currentWorkProgress) {
+          const savedPage = Number(currentWorkProgress.currentPage || 0);
+          const safePage = Math.min(Math.max(savedPage, 0), pages.length - 1);
+
+          setCurrentPage(safePage);
+        } else {
+          setCurrentPage(0);
+        }
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setWorkError(
+          error.message ||
+            "Не вдалося завантажити прогрес читання. Перевірте backend.",
+        );
+      } finally {
+        if (isMounted) {
+          setHasLoadedReadingProgress(true);
+        }
+      }
+    };
+
+    loadReadingProgress();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [work, token, pages.length]);
+
+  useEffect(() => {
+    if (
+      !work ||
+      !isAuthorized ||
+      !hasLoadedReadingProgress ||
+      pages.length === 0
+    ) {
       return;
     }
 
     saveReadingProgressToApi(work.id, currentPage, token).catch(() => {});
-  }, [work, isAuthorized, token, currentPage, pages.length]);
+  }, [
+    work,
+    isAuthorized,
+    token,
+    currentPage,
+    pages.length,
+    hasLoadedReadingProgress,
+  ]);
 
   /**
    * Перемикає стан твору в обраному через backend.
@@ -712,7 +779,7 @@ export default function WorkDetailsPage() {
                           {comment.updatedAt &&
                             comment.updatedAt !== comment.createdAt && (
                             <span className="comments__date">
-                             Змінено: {formatDate(comment.updatedAt)}
+                              Змінено: {formatDate(comment.updatedAt)}
                             </span>
                           )}
                         </div>
