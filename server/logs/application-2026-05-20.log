@@ -124,3 +124,7 @@
 2026-05-20 19:56:07 [INFO] [request] HTTP request started {"requestId":"5a7a261b-03b6-4dee-854c-8277cd544e3e","method":"GET","url":"/api/comments/my","ip":"::ffff:127.0.0.1","sessionType":"anonymous","userId":null,"role":null}
 2026-05-20 19:56:07 [WARNING] [request] HTTP request finished with client error {"requestId":"5a7a261b-03b6-4dee-854c-8277cd544e3e","method":"GET","url":"/api/comments/my","statusCode":404,"durationMs":1,"sessionType":"anonymous","userId":null,"role":null}
 2026-05-20 19:56:11 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}
+2026-05-20 19:56:14 [INFO] [server] API running on http://localhost:4000 {"env":"development"}
+2026-05-20 19:56:17 [INFO] [request] HTTP request started {"requestId":"f785688b-d4b0-4bba-a37d-d4d0c6c7110c","method":"GET","url":"/api/comments/my","ip":"::ffff:127.0.0.1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:56:17 [INFO] [comment.routes] Current user comments requested {"requestId":"f785688b-d4b0-4bba-a37d-d4d0c6c7110c","userId":"1765592205256","count":1}
+2026-05-20 19:56:17 [INFO] [request] HTTP request finished {"requestId":"f785688b-d4b0-4bba-a37d-d4d0c6c7110c","method":"GET","url":"/api/comments/my","statusCode":200,"durationMs":153,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}

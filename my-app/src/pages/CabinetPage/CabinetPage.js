@@ -9,13 +9,6 @@ import {
   getUserId,
 } from "../../utils/worksStorage";
 import {
-  deleteOwnCommentFromWork,
-  editOwnComment,
-  getAllCommentsByWork,
-  getUserComments,
-  saveAllCommentsByWork,
-} from "../../utils/commentsStorage";
-import {
   deleteReadingProgressByWork,
   getAllReadingProgress,
   getContinueReadingWorks,
@@ -34,6 +27,11 @@ import {
   toggleFavoriteGenreForUser,
 } from "../../utils/favoriteGenresStorage";
 import { deleteWork, getMyWorks } from "../../api/worksApi";
+import {
+  deleteComment,
+  getMyComments,
+  updateComment,
+} from "../../api/commentsApi";
 import "./CabinetPage.css";
 
 /**
@@ -57,6 +55,20 @@ function mapUserWorkStatus(work) {
 }
 
 /**
+ * Форматує дату для відображення.
+ *
+ * @param {string} value - Дата з backend.
+ * @returns {string} Дата у форматі uk-UA.
+ */
+function formatDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(value).toLocaleDateString("uk-UA");
+}
+
+/**
  * Сторінка особистого кабінету авторизованого користувача.
  *
  * @returns {JSX.Element} Сторінка особистого кабінету.
@@ -76,14 +88,15 @@ export default function CabinetPage() {
     getAllReadingProgress(),
   );
 
-  const [commentsByWork, setCommentsByWork] = useState(() =>
-    getAllCommentsByWork(),
-  );
-
   const [userWorks, setUserWorks] = useState([]);
   const [isUserWorksLoading, setIsUserWorksLoading] = useState(true);
   const [userWorksError, setUserWorksError] = useState("");
   const [deletingWorkId, setDeletingWorkId] = useState(null);
+
+  const [userComments, setUserComments] = useState([]);
+  const [isUserCommentsLoading, setIsUserCommentsLoading] = useState(true);
+  const [userCommentsError, setUserCommentsError] = useState("");
+  const [processingCommentId, setProcessingCommentId] = useState(null);
 
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState("");
@@ -122,12 +135,6 @@ export default function CabinetPage() {
 
     return work.statusType === worksFilter;
   });
-
-  const userComments = getUserComments(
-    allPublishedWorks,
-    commentsByWork,
-    userId,
-  );
 
   useEffect(() => {
     let isMounted = true;
@@ -178,6 +185,57 @@ export default function CabinetPage() {
     };
   }, [token]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    /**
+     * Завантажує коментарі поточного користувача з backend.
+     *
+     * @returns {Promise<void>}
+     */
+    const loadUserComments = async () => {
+      if (!token) {
+        setIsUserCommentsLoading(false);
+        setUserCommentsError(
+          "Щоб переглянути власні коментарі, потрібно увійти.",
+        );
+        return;
+      }
+
+      try {
+        setIsUserCommentsLoading(true);
+        setUserCommentsError("");
+
+        const comments = await getMyComments(token);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setUserComments(comments);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setUserCommentsError(
+          error.message ||
+            "Не вдалося завантажити ваші коментарі. Перевірте backend.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsUserCommentsLoading(false);
+        }
+      }
+    };
+
+    loadUserComments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
   /**
    * Виконує вихід користувача з акаунту.
    *
@@ -186,17 +244,6 @@ export default function CabinetPage() {
   const onLogout = () => {
     dispatch(logout());
     navigate("/login");
-  };
-
-  /**
-   * Зберігає оновлений об'єкт коментарів.
-   *
-   * @param {Object.<string, Array>} updatedCommentsByWork - Оновлені коментарі.
-   * @returns {void}
-   */
-  const saveComments = (updatedCommentsByWork) => {
-    setCommentsByWork(updatedCommentsByWork);
-    saveAllCommentsByWork(updatedCommentsByWork);
   };
 
   /**
@@ -291,6 +338,7 @@ export default function CabinetPage() {
     setEditingCommentId(comment.id);
     setEditingCommentText(comment.text);
     setEditingCommentRating(String(comment.rating));
+    setUserCommentsError("");
   };
 
   /**
@@ -305,43 +353,71 @@ export default function CabinetPage() {
   };
 
   /**
-   * Зберігає зміни коментаря з кабінету користувача.
+   * Зберігає зміни коментаря з кабінету користувача через backend.
    *
    * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
-   * @param {number|string} workId - ID твору.
    * @param {number|string} commentId - ID коментаря.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const saveEditedComment = (event, workId, commentId) => {
+  const saveEditedComment = async (event, commentId) => {
     event.preventDefault();
 
     const normalizedText = editingCommentText.trim();
 
     if (!normalizedText) {
+      setUserCommentsError("Текст коментаря є обов'язковим.");
       return;
     }
 
-    const updatedCommentsByWork = editOwnComment(
-      commentsByWork,
-      workId,
-      commentId,
-      userId,
-      normalizedText,
-      editingCommentRating,
-    );
+    if (!token) {
+      setUserCommentsError("Щоб редагувати коментар, потрібно увійти.");
+      return;
+    }
 
-    saveComments(updatedCommentsByWork);
-    cancelEditingComment();
+    try {
+      setProcessingCommentId(commentId);
+      setUserCommentsError("");
+
+      await updateComment(
+        commentId,
+        {
+          text: normalizedText,
+          rating: Number(editingCommentRating),
+        },
+        token,
+      );
+
+      setUserComments((comments) =>
+        comments.map((comment) =>
+          String(comment.id) === String(commentId)
+            ? {
+              ...comment,
+              text: normalizedText,
+              rating: Number(editingCommentRating),
+              updatedAt: new Date().toISOString(),
+            }
+            : comment,
+        ),
+      );
+
+      cancelEditingComment();
+    } catch (error) {
+      setUserCommentsError(
+        error.message ||
+          "Не вдалося оновити коментар. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setProcessingCommentId(null);
+    }
   };
 
   /**
-   * Видаляє коментар користувача.
+   * Видаляє коментар користувача через backend.
    *
-   * @param {number|string} workId - ID твору.
    * @param {number|string} commentId - ID коментаря.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const deleteOwnComment = (workId, commentId) => {
+  const deleteOwnComment = async (commentId) => {
     const shouldDelete = window.confirm(
       "Ви впевнені, що хочете видалити цей коментар?",
     );
@@ -350,17 +426,31 @@ export default function CabinetPage() {
       return;
     }
 
-    const updatedCommentsByWork = deleteOwnCommentFromWork(
-      commentsByWork,
-      workId,
-      commentId,
-      userId,
-    );
+    if (!token) {
+      setUserCommentsError("Щоб видалити коментар, потрібно увійти.");
+      return;
+    }
 
-    saveComments(updatedCommentsByWork);
+    try {
+      setProcessingCommentId(commentId);
+      setUserCommentsError("");
 
-    if (editingCommentId === commentId) {
-      cancelEditingComment();
+      await deleteComment(commentId, token);
+
+      setUserComments((comments) =>
+        comments.filter((comment) => String(comment.id) !== String(commentId)),
+      );
+
+      if (String(editingCommentId) === String(commentId)) {
+        cancelEditingComment();
+      }
+    } catch (error) {
+      setUserCommentsError(
+        error.message ||
+          "Не вдалося видалити коментар. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setProcessingCommentId(null);
     }
   };
 
@@ -550,7 +640,7 @@ export default function CabinetPage() {
           !userWorksError &&
           filteredUserWorks.length === 0 && (
           <p className="cabinet__empty">
-              Немає творів для вибраного фільтра.
+            Немає творів для вибраного фільтра.
           </p>
         )}
 
@@ -593,19 +683,14 @@ export default function CabinetPage() {
 
                     {work.statusType === "pending" && (
                       <span className="cabinet__note">
-                          Твір очікує перевірки модератором.
+                        Твір очікує перевірки модератором.
                       </span>
                     )}
 
                     {work.statusType === "approved" && (
                       <span className="cabinet__note cabinet__note--approved">
-                          Твір опубліковано{" "}
-                        {work.approvedAt
-                          ? new Date(work.approvedAt).toLocaleDateString(
-                            "uk-UA",
-                          )
-                          : ""}
-                          .
+                        Твір опубліковано{" "}
+                        {work.approvedAt ? formatDate(work.approvedAt) : ""}.
                       </span>
                     )}
 
@@ -614,12 +699,8 @@ export default function CabinetPage() {
                         <strong>Причина відхилення:</strong>
                         <p>{work.rejectionReason || "Причину не вказано."}</p>
                         <span>
-                            Дата відхилення:{" "}
-                          {work.rejectedAt
-                            ? new Date(work.rejectedAt).toLocaleDateString(
-                              "uk-UA",
-                            )
-                            : "—"}
+                          Дата відхилення:{" "}
+                          {work.rejectedAt ? formatDate(work.rejectedAt) : "—"}
                         </span>
                       </div>
                     )}
@@ -693,14 +774,31 @@ export default function CabinetPage() {
       <section className="cabinet__section">
         <h2 className="cabinet__section-title">Мої коментарі та оцінки</h2>
 
-        {userComments.length === 0 ? (
+        {isUserCommentsLoading && (
+          <p className="cabinet__empty">Завантажуємо ваші коментарі...</p>
+        )}
+
+        {!isUserCommentsLoading && userCommentsError && (
+          <p className="cabinet__empty">{userCommentsError}</p>
+        )}
+
+        {!isUserCommentsLoading &&
+          !userCommentsError &&
+          userComments.length === 0 && (
           <p className="cabinet__empty">
             Ви ще не залишали коментарів до творів.
           </p>
-        ) : (
+        )}
+
+        {!isUserCommentsLoading &&
+          !userCommentsError &&
+          userComments.length > 0 && (
           <div className="cabinet__comments">
             {userComments.map((comment) => {
-              const isEditing = editingCommentId === comment.id;
+              const isEditing =
+                  String(editingCommentId) === String(comment.id);
+              const isProcessing =
+                  String(processingCommentId) === String(comment.id);
 
               return (
                 <article className="cabinet__comment" key={comment.id}>
@@ -723,7 +821,7 @@ export default function CabinetPage() {
                     <form
                       className="cabinet__comment-edit-form"
                       onSubmit={(event) =>
-                        saveEditedComment(event, comment.workId, comment.id)
+                        saveEditedComment(event, comment.id)
                       }
                     >
                       <label className="cabinet__comment-edit-label">
@@ -734,6 +832,7 @@ export default function CabinetPage() {
                           onChange={(event) =>
                             setEditingCommentRating(event.target.value)
                           }
+                          disabled={isProcessing}
                         >
                           <option value="5">5</option>
                           <option value="4">4</option>
@@ -744,7 +843,7 @@ export default function CabinetPage() {
                       </label>
 
                       <label className="cabinet__comment-edit-label">
-                        Коментар
+                          Коментар
                         <textarea
                           className="cabinet__comment-textarea"
                           value={editingCommentText}
@@ -752,20 +851,26 @@ export default function CabinetPage() {
                             setEditingCommentText(event.target.value)
                           }
                           rows="4"
+                          disabled={isProcessing}
                         />
                       </label>
 
                       <div className="cabinet__comment-edit-actions">
-                        <button className="cabinet__comment-save" type="submit">
-                          Зберегти
+                        <button
+                          className="cabinet__comment-save"
+                          type="submit"
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? "Зберігаємо..." : "Зберегти"}
                         </button>
 
                         <button
                           className="cabinet__delete"
                           type="button"
                           onClick={cancelEditingComment}
+                          disabled={isProcessing}
                         >
-                          Скасувати
+                            Скасувати
                         </button>
                       </div>
                     </form>
@@ -775,14 +880,19 @@ export default function CabinetPage() {
 
                       <div className="cabinet__comment-meta">
                         <span className="cabinet__date">
-                          {comment.createdAt}
+                          {formatDate(comment.createdAt)}
                         </span>
 
-                        {comment.updatedAt && (
+                        {comment.updatedAt &&
+                          comment.updatedAt !== comment.createdAt && (
                           <span className="cabinet__date">
-                            Змінено: {comment.updatedAt}
+                            Змінено: {formatDate(comment.updatedAt)}
                           </span>
                         )}
+
+                        <span className="cabinet__date">
+                          Лайків: {comment.likesCount || 0}
+                        </span>
                       </div>
 
                       <div className="cabinet__comment-actions">
@@ -797,6 +907,7 @@ export default function CabinetPage() {
                           className="cabinet__comment-button"
                           type="button"
                           onClick={() => startEditingComment(comment)}
+                          disabled={isProcessing}
                         >
                           Редагувати
                         </button>
@@ -804,11 +915,10 @@ export default function CabinetPage() {
                         <button
                           className="cabinet__delete"
                           type="button"
-                          onClick={() =>
-                            deleteOwnComment(comment.workId, comment.id)
-                          }
+                          onClick={() => deleteOwnComment(comment.id)}
+                          disabled={isProcessing}
                         >
-                          Видалити
+                          {isProcessing ? "Видаляємо..." : "Видалити"}
                         </button>
                       </div>
                     </>
