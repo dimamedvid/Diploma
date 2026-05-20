@@ -73,3 +73,4 @@
 2026-05-20 19:16:02 [INFO] [request] HTTP request started {"requestId":"4c515d4a-e1e3-4497-8f43-ba104a86e17d","method":"DELETE","url":"/api/comments/3","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
 2026-05-20 19:16:02 [INFO] [comment.routes] Comment deleted {"requestId":"4c515d4a-e1e3-4497-8f43-ba104a86e17d","commentId":"3","userId":"1765592205256"}
 2026-05-20 19:16:02 [INFO] [request] HTTP request finished {"requestId":"4c515d4a-e1e3-4497-8f43-ba104a86e17d","method":"DELETE","url":"/api/comments/3","statusCode":200,"durationMs":4,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
+2026-05-20 19:30:57 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}

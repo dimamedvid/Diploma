@@ -14,6 +14,7 @@ function mapWorkRow(row) {
     authorId: row.author_id,
     genre: row.genre,
     rating: Number(row.rating || 0),
+    ratingsCount: Number(row.ratings_count || 0),
     description: row.description,
     cover: row.cover,
     status: row.status,
@@ -37,7 +38,24 @@ function mapPageRows(rows) {
 }
 
 /**
+ * SQL-фрагмент для підрахунку середнього рейтингу і кількості оцінок.
+ */
+const ratingJoinSql = `
+  LEFT JOIN (
+    SELECT
+      work_id,
+      AVG(rating) AS rating,
+      COUNT(id) AS ratings_count
+    FROM comments
+    GROUP BY work_id
+  ) AS rating_stats
+    ON works.id = rating_stats.work_id
+`;
+
+/**
  * Повертає список опублікованих творів.
+ *
+ * Рейтинг рахується автоматично з таблиці comments.
  *
  * @returns {Promise<Object[]>} Список опублікованих творів.
  */
@@ -45,24 +63,26 @@ async function getPublishedWorks() {
   const result = await query(
     `
       SELECT
-        id,
-        title,
-        author,
-        author_id,
-        genre,
-        description,
-        cover,
-        status,
-        rating,
-        submitted_at,
-        approved_at,
-        rejected_at,
-        rejection_reason,
-        created_at,
-        updated_at
+        works.id,
+        works.title,
+        works.author,
+        works.author_id,
+        works.genre,
+        works.description,
+        works.cover,
+        works.status,
+        COALESCE(rating_stats.rating, 0) AS rating,
+        COALESCE(rating_stats.ratings_count, 0) AS ratings_count,
+        works.submitted_at,
+        works.approved_at,
+        works.rejected_at,
+        works.rejection_reason,
+        works.created_at,
+        works.updated_at
       FROM works
-      WHERE status = $1
-      ORDER BY created_at DESC, id DESC
+      ${ratingJoinSql}
+      WHERE works.status = $1
+      ORDER BY works.created_at DESC, works.id DESC
     `,
     ["approved"],
   );
@@ -79,24 +99,26 @@ async function getPendingWorksForModeration() {
   const worksResult = await query(
     `
       SELECT
-        id,
-        title,
-        author,
-        author_id,
-        genre,
-        description,
-        cover,
-        status,
-        rating,
-        submitted_at,
-        approved_at,
-        rejected_at,
-        rejection_reason,
-        created_at,
-        updated_at
+        works.id,
+        works.title,
+        works.author,
+        works.author_id,
+        works.genre,
+        works.description,
+        works.cover,
+        works.status,
+        COALESCE(rating_stats.rating, 0) AS rating,
+        COALESCE(rating_stats.ratings_count, 0) AS ratings_count,
+        works.submitted_at,
+        works.approved_at,
+        works.rejected_at,
+        works.rejection_reason,
+        works.created_at,
+        works.updated_at
       FROM works
-      WHERE status = $1
-      ORDER BY submitted_at ASC, id ASC
+      ${ratingJoinSql}
+      WHERE works.status = $1
+      ORDER BY works.submitted_at ASC, works.id ASC
     `,
     ["pending"],
   );
@@ -126,6 +148,8 @@ async function getPendingWorksForModeration() {
 /**
  * Повертає всі твори конкретного користувача.
  *
+ * Рейтинг також рахується з таблиці comments.
+ *
  * @param {string} authorId - ID автора з JWT.
  * @returns {Promise<Object[]>} Список творів користувача.
  */
@@ -133,24 +157,26 @@ async function getWorksByAuthorId(authorId) {
   const result = await query(
     `
       SELECT
-        id,
-        title,
-        author,
-        author_id,
-        genre,
-        description,
-        cover,
-        status,
-        rating,
-        submitted_at,
-        approved_at,
-        rejected_at,
-        rejection_reason,
-        created_at,
-        updated_at
+        works.id,
+        works.title,
+        works.author,
+        works.author_id,
+        works.genre,
+        works.description,
+        works.cover,
+        works.status,
+        COALESCE(rating_stats.rating, 0) AS rating,
+        COALESCE(rating_stats.ratings_count, 0) AS ratings_count,
+        works.submitted_at,
+        works.approved_at,
+        works.rejected_at,
+        works.rejection_reason,
+        works.created_at,
+        works.updated_at
       FROM works
-      WHERE author_id = $1
-      ORDER BY created_at DESC, id DESC
+      ${ratingJoinSql}
+      WHERE works.author_id = $1
+      ORDER BY works.created_at DESC, works.id DESC
     `,
     [authorId],
   );
@@ -161,6 +187,8 @@ async function getWorksByAuthorId(authorId) {
 /**
  * Повертає один твір разом зі сторінками.
  *
+ * Рейтинг рахується з коментарів.
+ *
  * @param {number|string} workId - ID твору.
  * @returns {Promise<Object|null>} Твір зі сторінками або null.
  */
@@ -168,23 +196,25 @@ async function getWorkById(workId) {
   const workResult = await query(
     `
       SELECT
-        id,
-        title,
-        author,
-        author_id,
-        genre,
-        description,
-        cover,
-        status,
-        rating,
-        submitted_at,
-        approved_at,
-        rejected_at,
-        rejection_reason,
-        created_at,
-        updated_at
+        works.id,
+        works.title,
+        works.author,
+        works.author_id,
+        works.genre,
+        works.description,
+        works.cover,
+        works.status,
+        COALESCE(rating_stats.rating, 0) AS rating,
+        COALESCE(rating_stats.ratings_count, 0) AS ratings_count,
+        works.submitted_at,
+        works.approved_at,
+        works.rejected_at,
+        works.rejection_reason,
+        works.created_at,
+        works.updated_at
       FROM works
-      WHERE id = $1
+      ${ratingJoinSql}
+      WHERE works.id = $1
     `,
     [workId],
   );
@@ -250,7 +280,8 @@ async function createWork(workData) {
           description,
           cover,
           status,
-          rating,
+          0 AS rating,
+          0 AS ratings_count,
           submitted_at,
           approved_at,
           rejected_at,
@@ -335,7 +366,8 @@ async function updateOwnWorkById(workId, authorId, workData) {
           description,
           cover,
           status,
-          rating,
+          0 AS rating,
+          0 AS ratings_count,
           submitted_at,
           approved_at,
           rejected_at,
@@ -433,7 +465,8 @@ async function approveWorkById(workId) {
         description,
         cover,
         status,
-        rating,
+        0 AS rating,
+        0 AS ratings_count,
         submitted_at,
         approved_at,
         rejected_at,
@@ -478,7 +511,8 @@ async function rejectWorkById(workId, rejectionReason) {
         description,
         cover,
         status,
-        rating,
+        0 AS rating,
+        0 AS ratings_count,
         submitted_at,
         approved_at,
         rejected_at,

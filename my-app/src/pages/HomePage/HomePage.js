@@ -142,7 +142,7 @@ export default function HomePage() {
           return;
         }
 
-        setAllWorks(enrichWorksWithRating(worksFromApi));
+        setAllWorks(worksFromApi);
         setApiError("");
       } catch (error) {
         if (!isMounted) {
@@ -214,7 +214,9 @@ export default function HomePage() {
             <p className="results__hint">{apiError}</p>
           )}
 
-          {!isLoading && favoriteGenres.length > 0 && sortOption === "recommended" && (
+          {!isLoading &&
+            favoriteGenres.length > 0 &&
+            sortOption === "recommended" && (
             <p className="results__hint">
               Спочатку показуються твори з ваших улюблених жанрів:{" "}
               {favoriteGenres.join(", ")}.
