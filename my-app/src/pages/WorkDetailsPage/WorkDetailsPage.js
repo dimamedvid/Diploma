@@ -1,33 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
-import worksData from "../../data/works.json";
-import {
-  getAllPublishedWorks,
-  getWorkRatingStats,
-} from "../../utils/worksStorage";
-import {
-  addCommentToWork,
-  deleteOwnCommentFromWork,
-  editOwnComment,
-  getAllCommentsByWork,
-  getCommentAuthor,
-  getWorkComments,
-  hasUserCommentedWork,
-  saveAllCommentsByWork,
-  toggleCommentLikeByUser,
-} from "../../utils/commentsStorage";
-import {
-  getSavedReadingPage,
-  saveReadingPage,
-} from "../../utils/readingProgressStorage";
 import {
   getFavoriteWorkIds,
   isWorkFavorite,
   saveFavoriteWorkIds,
   toggleFavoriteWork,
 } from "../../utils/favoritesStorage";
+import {
+  getSavedReadingPage,
+  saveReadingPage,
+} from "../../utils/readingProgressStorage";
 import { getWorkById } from "../../api/worksApi";
+import {
+  createWorkComment,
+  deleteComment,
+  getWorkComments,
+  toggleCommentLike,
+  updateComment,
+} from "../../api/commentsApi";
 import "./WorkDetailsPage.css";
 
 /**
@@ -50,52 +41,81 @@ function renderParagraphs(text) {
  * @returns {string} ID користувача.
  */
 function getCurrentUserId(user) {
-  return String(user.id || user.login || user.email);
+  return String(user?.id || user?.login || user?.email || "");
 }
 
 /**
- * Шукає локальний твір як fallback.
+ * Рахує рейтинг твору на основі коментарів.
  *
- * @param {number|string} id - ID твору.
- * @returns {Object|null} Знайдений твір або null.
+ * @param {Object[]} comments - Коментарі твору.
+ * @returns {{ rating: number, ratingsCount: number }} Статистика рейтингу.
  */
-function getLocalFallbackWork(id) {
-  const allWorks = getAllPublishedWorks(worksData);
+function getRatingStats(comments) {
+  if (comments.length === 0) {
+    return {
+      rating: 0,
+      ratingsCount: 0,
+    };
+  }
 
-  return allWorks.find((item) => String(item.id) === String(id)) || null;
+  const ratingSum = comments.reduce((sum, comment) => {
+    return sum + Number(comment.rating || 0);
+  }, 0);
+
+  return {
+    rating: ratingSum / comments.length,
+    ratingsCount: comments.length,
+  };
+}
+
+/**
+ * Форматує дату для відображення.
+ *
+ * @param {string} value - Дата з backend.
+ * @returns {string} Дата у форматі uk-UA.
+ */
+function formatDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(value).toLocaleDateString("uk-UA");
 }
 
 /**
  * Сторінка детального перегляду твору.
  *
- * @function WorkDetailsPage
+ * Відображає твір, сторінки читання, обране,
+ * коментарі, оцінки, лайки, редагування і видалення коментарів.
+ *
  * @returns {JSX.Element}
  */
 export default function WorkDetailsPage() {
   const { id } = useParams();
-  const { user } = useSelector((state) => state.auth);
+  const { user, token } = useSelector((state) => state.auth);
 
-  const [work, setWork] = useState(() => getLocalFallbackWork(id));
-  const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState("");
+  const [work, setWork] = useState(null);
+  const [isWorkLoading, setIsWorkLoading] = useState(true);
+  const [workError, setWorkError] = useState("");
+
+  const [comments, setComments] = useState([]);
+  const [isCommentsLoading, setIsCommentsLoading] = useState(true);
+  const [commentsError, setCommentsError] = useState("");
 
   const [currentPage, setCurrentPage] = useState(0);
-
   const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteWorkIds());
-
-  const [commentsByWork, setCommentsByWork] = useState(() =>
-    getAllCommentsByWork(),
-  );
 
   const [commentText, setCommentText] = useState("");
   const [commentRating, setCommentRating] = useState("5");
+  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
 
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingText, setEditingText] = useState("");
   const [editingRating, setEditingRating] = useState("5");
+  const [processingCommentId, setProcessingCommentId] = useState(null);
 
-  const isAuthorized = Boolean(user);
-  const currentUserId = isAuthorized ? getCurrentUserId(user) : "";
+  const isAuthorized = Boolean(user && token);
+  const currentUserId = getCurrentUserId(user);
 
   const pages = useMemo(() => {
     return work?.pages || [];
@@ -103,19 +123,13 @@ export default function WorkDetailsPage() {
 
   const pageText = pages[currentPage] || "Текст твору поки не додано.";
   const isFavorite = work ? isWorkFavorite(favoriteIds, work.id) : false;
-  const workComments = work ? getWorkComments(commentsByWork, work.id) : [];
-  const ratingStats = work
-    ? getWorkRatingStats(work, commentsByWork)
-    : {
-      rating: 0,
-      ratingsCount: 0,
-    };
 
-  const commentAuthor = isAuthorized ? getCommentAuthor(user) : "";
+  const ratingStats = useMemo(() => {
+    return getRatingStats(comments);
+  }, [comments]);
 
-  const hasUserCommented = hasUserCommentedWork(
-    workComments,
-    currentUserId,
+  const hasUserCommented = comments.some(
+    (comment) => String(comment.userId) === String(currentUserId),
   );
 
   useEffect(() => {
@@ -124,13 +138,12 @@ export default function WorkDetailsPage() {
     /**
      * Завантажує твір з backend.
      *
-     * Якщо backend недоступний, використовує локальний fallback.
-     *
      * @returns {Promise<void>}
      */
     const loadWork = async () => {
       try {
-        setIsLoading(true);
+        setIsWorkLoading(true);
+        setWorkError("");
 
         const workFromApi = await getWorkById(id);
 
@@ -139,24 +152,65 @@ export default function WorkDetailsPage() {
         }
 
         setWork(workFromApi);
-        setApiError("");
       } catch (error) {
         if (!isMounted) {
           return;
         }
 
-        setWork(getLocalFallbackWork(id));
-        setApiError(
-          "Backend зараз недоступний або твір не знайдено, тому використано локальні дані.",
+        setWorkError(
+          error.message || "Не вдалося завантажити твір. Перевірте backend.",
         );
       } finally {
         if (isMounted) {
-          setIsLoading(false);
+          setIsWorkLoading(false);
         }
       }
     };
 
     loadWork();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    /**
+     * Завантажує коментарі до твору з backend.
+     *
+     * @returns {Promise<void>}
+     */
+    const loadComments = async () => {
+      try {
+        setIsCommentsLoading(true);
+        setCommentsError("");
+
+        const commentsFromApi = await getWorkComments(id);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setComments(commentsFromApi);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setCommentsError(
+          error.message ||
+            "Не вдалося завантажити коментарі. Перевірте backend.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsCommentsLoading(false);
+        }
+      }
+    };
+
+    loadComments();
 
     return () => {
       isMounted = false;
@@ -181,36 +235,6 @@ export default function WorkDetailsPage() {
 
     saveReadingPage(currentUserId, work.id, currentPage);
   }, [work, isAuthorized, currentUserId, currentPage, pages.length]);
-
-  if (!work && !isLoading) {
-    return (
-      <section className="work-details">
-        <h1>Твір не знайдено</h1>
-        <a className="work-details__back" href="/">
-          Повернутися на головну
-        </a>
-      </section>
-    );
-  }
-
-  if (!work && isLoading) {
-    return (
-      <section className="work-details">
-        <h1>Завантаження твору...</h1>
-      </section>
-    );
-  }
-
-  /**
-   * Зберігає оновлений об'єкт коментарів.
-   *
-   * @param {Object.<string, Array>} updatedCommentsByWork - Оновлені коментарі.
-   * @returns {void}
-   */
-  const saveComments = (updatedCommentsByWork) => {
-    setCommentsByWork(updatedCommentsByWork);
-    saveAllCommentsByWork(updatedCommentsByWork);
-  };
 
   /**
    * Перемикає стан твору в обраному.
@@ -243,12 +267,12 @@ export default function WorkDetailsPage() {
   };
 
   /**
-   * Додає коментар користувача разом з оцінкою.
+   * Додає коментар через backend.
    *
    * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const handleCommentSubmit = (event) => {
+  const handleCommentSubmit = async (event) => {
     event.preventDefault();
 
     if (!isAuthorized || hasUserCommented) {
@@ -258,30 +282,34 @@ export default function WorkDetailsPage() {
     const normalizedText = commentText.trim();
 
     if (!normalizedText) {
+      setCommentsError("Текст коментаря є обов'язковим.");
       return;
     }
 
-    const newComment = {
-      id: Date.now(),
-      userId: currentUserId,
-      author: commentAuthor,
-      text: normalizedText,
-      rating: Number(commentRating),
-      likedBy: [],
-      createdAt: new Date().toLocaleDateString("uk-UA"),
-      updatedAt: "",
-    };
+    try {
+      setIsCommentSubmitting(true);
+      setCommentsError("");
 
-    const updatedCommentsByWork = addCommentToWork(
-      commentsByWork,
-      work.id,
-      newComment,
-    );
+      const createdComment = await createWorkComment(
+        work.id,
+        {
+          text: normalizedText,
+          rating: Number(commentRating),
+        },
+        token,
+      );
 
-    saveComments(updatedCommentsByWork);
-
-    setCommentText("");
-    setCommentRating("5");
+      setComments((previousComments) => [createdComment, ...previousComments]);
+      setCommentText("");
+      setCommentRating("5");
+    } catch (error) {
+      setCommentsError(
+        error.message ||
+          "Не вдалося додати коментар. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setIsCommentSubmitting(false);
+    }
   };
 
   /**
@@ -294,6 +322,7 @@ export default function WorkDetailsPage() {
     setEditingCommentId(comment.id);
     setEditingText(comment.text);
     setEditingRating(String(comment.rating));
+    setCommentsError("");
   };
 
   /**
@@ -308,61 +337,94 @@ export default function WorkDetailsPage() {
   };
 
   /**
-   * Зберігає змінений коментар користувача.
+   * Зберігає змінений коментар через backend.
    *
    * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const handleEditSubmit = (event) => {
+  const handleEditSubmit = async (event) => {
     event.preventDefault();
 
     const normalizedText = editingText.trim();
 
     if (!normalizedText) {
+      setCommentsError("Текст коментаря є обов'язковим.");
       return;
     }
 
-    const updatedCommentsByWork = editOwnComment(
-      commentsByWork,
-      work.id,
-      editingCommentId,
-      currentUserId,
-      normalizedText,
-      editingRating,
-    );
+    try {
+      setProcessingCommentId(editingCommentId);
+      setCommentsError("");
 
-    saveComments(updatedCommentsByWork);
-    cancelEditingComment();
+      const updatedComment = await updateComment(
+        editingCommentId,
+        {
+          text: normalizedText,
+          rating: Number(editingRating),
+        },
+        token,
+      );
+
+      setComments((previousComments) =>
+        previousComments.map((comment) =>
+          String(comment.id) === String(updatedComment.id)
+            ? updatedComment
+            : comment,
+        ),
+      );
+
+      cancelEditingComment();
+    } catch (error) {
+      setCommentsError(
+        error.message ||
+          "Не вдалося оновити коментар. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setProcessingCommentId(null);
+    }
   };
 
   /**
-   * Додає або прибирає лайк з коментаря.
+   * Додає або прибирає лайк з коментаря через backend.
    *
    * @param {number|string} commentId - ID коментаря.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const toggleCommentLike = (commentId) => {
+  const handleToggleCommentLike = async (commentId) => {
     if (!isAuthorized) {
       return;
     }
 
-    const updatedCommentsByWork = toggleCommentLikeByUser(
-      commentsByWork,
-      work.id,
-      commentId,
-      currentUserId,
-    );
+    try {
+      setProcessingCommentId(commentId);
+      setCommentsError("");
 
-    saveComments(updatedCommentsByWork);
+      const updatedComment = await toggleCommentLike(commentId, token);
+
+      setComments((previousComments) =>
+        previousComments.map((comment) =>
+          String(comment.id) === String(updatedComment.id)
+            ? updatedComment
+            : comment,
+        ),
+      );
+    } catch (error) {
+      setCommentsError(
+        error.message ||
+          "Не вдалося змінити лайк. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setProcessingCommentId(null);
+    }
   };
 
   /**
-   * Видаляє власний коментар користувача.
+   * Видаляє власний коментар через backend.
    *
    * @param {number|string} commentId - ID коментаря.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const deleteOwnComment = (commentId) => {
+  const deleteOwnComment = async (commentId) => {
     const shouldDelete = window.confirm(
       "Ви впевнені, що хочете видалити цей коментар?",
     );
@@ -371,19 +433,52 @@ export default function WorkDetailsPage() {
       return;
     }
 
-    const updatedCommentsByWork = deleteOwnCommentFromWork(
-      commentsByWork,
-      work.id,
-      commentId,
-      currentUserId,
-    );
+    try {
+      setProcessingCommentId(commentId);
+      setCommentsError("");
 
-    saveComments(updatedCommentsByWork);
+      await deleteComment(commentId, token);
 
-    if (editingCommentId === commentId) {
-      cancelEditingComment();
+      setComments((previousComments) =>
+        previousComments.filter(
+          (comment) => String(comment.id) !== String(commentId),
+        ),
+      );
+
+      if (String(editingCommentId) === String(commentId)) {
+        cancelEditingComment();
+      }
+    } catch (error) {
+      setCommentsError(
+        error.message ||
+          "Не вдалося видалити коментар. Перевірте backend і спробуйте ще раз.",
+      );
+    } finally {
+      setProcessingCommentId(null);
     }
   };
+
+  if (isWorkLoading) {
+    return (
+      <section className="work-details">
+        <h1>Завантаження твору...</h1>
+      </section>
+    );
+  }
+
+  if (!work) {
+    return (
+      <section className="work-details">
+        <h1>Твір не знайдено</h1>
+
+        {workError && <p className="work-details__description">{workError}</p>}
+
+        <a className="work-details__back" href="/">
+          Повернутися на головну
+        </a>
+      </section>
+    );
+  }
 
   return (
     <section className="work-details">
@@ -391,7 +486,7 @@ export default function WorkDetailsPage() {
         ← До каталогу
       </a>
 
-      {apiError && <p className="work-details__description">{apiError}</p>}
+      {workError && <p className="work-details__description">{workError}</p>}
 
       <div className="work-details__header">
         <div className="work-details__cover-wrapper">
@@ -474,6 +569,10 @@ export default function WorkDetailsPage() {
       <section className="comments">
         <h2 className="comments__title">Коментарі та оцінки</h2>
 
+        {commentsError && (
+          <div className="comments__auth-message">{commentsError}</div>
+        )}
+
         {isAuthorized && !hasUserCommented ? (
           <form className="comments__form" onSubmit={handleCommentSubmit}>
             <label className="comments__label">
@@ -482,6 +581,7 @@ export default function WorkDetailsPage() {
                 className="comments__select"
                 value={commentRating}
                 onChange={(event) => setCommentRating(event.target.value)}
+                disabled={isCommentSubmitting}
               >
                 <option value="5">5</option>
                 <option value="4">4</option>
@@ -499,11 +599,16 @@ export default function WorkDetailsPage() {
                 onChange={(event) => setCommentText(event.target.value)}
                 placeholder="Напишіть вашу думку про твір..."
                 rows="5"
+                disabled={isCommentSubmitting}
               />
             </label>
 
-            <button className="comments__submit" type="submit">
-              Додати коментар
+            <button
+              className="comments__submit"
+              type="submit"
+              disabled={isCommentSubmitting}
+            >
+              {isCommentSubmitting ? "Додаємо..." : "Додати коментар"}
             </button>
           </form>
         ) : isAuthorized ? (
@@ -520,14 +625,20 @@ export default function WorkDetailsPage() {
         )}
 
         <div className="comments__list">
-          {workComments.length === 0 ? (
+          {isCommentsLoading ? (
+            <p className="comments__empty">Завантажуємо коментарі...</p>
+          ) : comments.length === 0 ? (
             <p className="comments__empty">Коментарів поки немає.</p>
           ) : (
-            workComments.map((comment) => {
-              const isOwnComment = comment.userId === currentUserId;
-              const isEditing = editingCommentId === comment.id;
+            comments.map((comment) => {
+              const isOwnComment =
+                String(comment.userId) === String(currentUserId);
+              const isEditing =
+                String(editingCommentId) === String(comment.id);
               const likedBy = comment.likedBy || [];
               const isLikedByCurrentUser = likedBy.includes(currentUserId);
+              const isProcessing =
+                String(processingCommentId) === String(comment.id);
 
               return (
                 <article className="comments__item" key={comment.id}>
@@ -552,6 +663,7 @@ export default function WorkDetailsPage() {
                           onChange={(event) =>
                             setEditingRating(event.target.value)
                           }
+                          disabled={isProcessing}
                         >
                           <option value="5">5</option>
                           <option value="4">4</option>
@@ -570,18 +682,24 @@ export default function WorkDetailsPage() {
                             setEditingText(event.target.value)
                           }
                           rows="4"
+                          disabled={isProcessing}
                         />
                       </label>
 
                       <div className="comments__actions">
-                        <button className="comments__submit" type="submit">
-                          Зберегти
+                        <button
+                          className="comments__submit"
+                          type="submit"
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? "Зберігаємо..." : "Зберегти"}
                         </button>
 
                         <button
                           className="comments__secondary-button"
                           type="button"
                           onClick={cancelEditingComment}
+                          disabled={isProcessing}
                         >
                           Скасувати
                         </button>
@@ -594,12 +712,13 @@ export default function WorkDetailsPage() {
                       <div className="comments__footer">
                         <div className="comments__dates">
                           <span className="comments__date">
-                            {comment.createdAt}
+                            {formatDate(comment.createdAt)}
                           </span>
 
-                          {comment.updatedAt && (
+                          {comment.updatedAt &&
+                            comment.updatedAt !== comment.createdAt && (
                             <span className="comments__date">
-                              Змінено: {comment.updatedAt}
+                              Змінено: {formatDate(comment.updatedAt)}
                             </span>
                           )}
                         </div>
@@ -612,10 +731,10 @@ export default function WorkDetailsPage() {
                                 : ""
                             }`}
                             type="button"
-                            onClick={() => toggleCommentLike(comment.id)}
-                            disabled={!isAuthorized}
+                            onClick={() => handleToggleCommentLike(comment.id)}
+                            disabled={!isAuthorized || isProcessing}
                           >
-                            👍 {likedBy.length}
+                            👍 {comment.likesCount || likedBy.length}
                           </button>
 
                           {isOwnComment && (
@@ -624,6 +743,7 @@ export default function WorkDetailsPage() {
                                 className="comments__secondary-button"
                                 type="button"
                                 onClick={() => startEditingComment(comment)}
+                                disabled={isProcessing}
                               >
                                 Редагувати
                               </button>
@@ -632,8 +752,9 @@ export default function WorkDetailsPage() {
                                 className="comments__delete-button"
                                 type="button"
                                 onClick={() => deleteOwnComment(comment.id)}
+                                disabled={isProcessing}
                               >
-                                Видалити
+                                {isProcessing ? "Видаляємо..." : "Видалити"}
                               </button>
                             </>
                           )}
