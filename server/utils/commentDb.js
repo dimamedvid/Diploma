@@ -22,6 +22,20 @@ function mapCommentRow(row) {
 }
 
 /**
+ * Перетворює коментар користувача з даними твору у формат для кабінету.
+ *
+ * @param {Object} row - Рядок з бази даних.
+ * @returns {Object} Коментар з інформацією про твір.
+ */
+function mapUserCommentRow(row) {
+  return {
+    ...mapCommentRow(row),
+    workTitle: row.work_title,
+    workAuthor: row.work_author,
+  };
+}
+
+/**
  * Повертає всі коментарі до твору.
  *
  * @param {number|string} workId - ID твору.
@@ -56,6 +70,49 @@ async function getCommentsByWorkId(workId) {
   );
 
   return result.rows.map(mapCommentRow);
+}
+
+/**
+ * Повертає всі коментарі поточного користувача.
+ *
+ * Використовується для блоку "Мої коментарі та оцінки" в кабінеті.
+ *
+ * @param {string} userId - ID користувача.
+ * @returns {Promise<Object[]>} Список коментарів користувача.
+ */
+async function getCommentsByUserId(userId) {
+  const result = await query(
+    `
+      SELECT
+        comments.id,
+        comments.work_id,
+        comments.user_id,
+        comments.author,
+        comments.text,
+        comments.rating,
+        comments.created_at,
+        comments.updated_at,
+        works.title AS work_title,
+        works.author AS work_author,
+        COALESCE(
+          ARRAY_AGG(comment_likes.user_id)
+          FILTER (WHERE comment_likes.user_id IS NOT NULL),
+          '{}'
+        ) AS liked_by,
+        COUNT(comment_likes.id) AS likes_count
+      FROM comments
+      INNER JOIN works
+        ON comments.work_id = works.id
+      LEFT JOIN comment_likes
+        ON comments.id = comment_likes.comment_id
+      WHERE comments.user_id = $1
+      GROUP BY comments.id, works.title, works.author
+      ORDER BY comments.created_at DESC, comments.id DESC
+    `,
+    [userId],
+  );
+
+  return result.rows.map(mapUserCommentRow);
 }
 
 /**
@@ -123,15 +180,7 @@ async function updateOwnComment(commentId, userId, commentData) {
         rating = $2,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $3 AND user_id = $4
-      RETURNING
-        id,
-        work_id,
-        user_id,
-        author,
-        text,
-        rating,
-        created_at,
-        updated_at
+      RETURNING work_id
     `,
     [text, rating, commentId, userId],
   );
@@ -218,35 +267,11 @@ async function toggleCommentLike(commentId, userId) {
   return comments.find((comment) => String(comment.id) === String(commentId));
 }
 
-/**
- * Повертає середню оцінку твору.
- *
- * @param {number|string} workId - ID твору.
- * @returns {Promise<{ rating: number, ratingsCount: number }>} Статистика рейтингу.
- */
-async function getWorkRatingStats(workId) {
-  const result = await query(
-    `
-      SELECT
-        COALESCE(AVG(rating), 0) AS rating,
-        COUNT(id) AS ratings_count
-      FROM comments
-      WHERE work_id = $1
-    `,
-    [workId],
-  );
-
-  return {
-    rating: Number(result.rows[0].rating || 0),
-    ratingsCount: Number(result.rows[0].ratings_count || 0),
-  };
-}
-
 module.exports = {
   getCommentsByWorkId,
+  getCommentsByUserId,
   createComment,
   updateOwnComment,
   deleteOwnComment,
   toggleCommentLike,
-  getWorkRatingStats,
 };

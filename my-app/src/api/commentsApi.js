@@ -48,6 +48,18 @@ export function getWorkComments(workId) {
 }
 
 /**
+ * Отримує коментарі поточного користувача.
+ *
+ * @param {string} token - JWT-токен.
+ * @returns {Promise<Object[]>} Список коментарів користувача.
+ */
+export function getMyComments(token) {
+  return request("/api/comments/my", {
+    headers: getAuthHeader(token),
+  });
+}
+
+/**
  * Додає коментар до твору.
  *
  * @param {number|string} workId - ID твору.

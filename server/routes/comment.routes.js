@@ -1,6 +1,7 @@
 const express = require("express");
 const {
   deleteOwnComment,
+  getCommentsByUserId,
   toggleCommentLike,
   updateOwnComment,
 } = require("../utils/commentDb");
@@ -32,6 +33,27 @@ function isValidRating(rating) {
 
   return Number.isInteger(numberRating) && numberRating >= 1 && numberRating <= 5;
 }
+
+/**
+ * GET /api/comments/my
+ *
+ * Повертає всі коментарі поточного користувача.
+ */
+router.get("/my", authMiddleware, async (req, res, next) => {
+  try {
+    const comments = await getCommentsByUserId(req.user.id);
+
+    log.info("Current user comments requested", {
+      requestId: req.requestId,
+      userId: req.user.id,
+      count: comments.length,
+    });
+
+    return res.json(comments);
+  } catch (error) {
+    return next(error);
+  }
+});
 
 /**
  * PUT /api/comments/:id

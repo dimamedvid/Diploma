@@ -74,3 +74,53 @@
 2026-05-20 19:16:02 [INFO] [comment.routes] Comment deleted {"requestId":"4c515d4a-e1e3-4497-8f43-ba104a86e17d","commentId":"3","userId":"1765592205256"}
 2026-05-20 19:16:02 [INFO] [request] HTTP request finished {"requestId":"4c515d4a-e1e3-4497-8f43-ba104a86e17d","method":"DELETE","url":"/api/comments/3","statusCode":200,"durationMs":4,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
 2026-05-20 19:30:57 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}
+2026-05-20 19:30:59 [INFO] [server] API running on http://localhost:4000 {"env":"development"}
+2026-05-20 19:33:01 [INFO] [request] HTTP request started {"requestId":"ced0a961-6e04-44b6-85ee-980bde8820b3","method":"GET","url":"/api/works","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:01 [INFO] [work.routes] Published works requested {"requestId":"ced0a961-6e04-44b6-85ee-980bde8820b3"}
+2026-05-20 19:33:01 [INFO] [request] HTTP request finished {"requestId":"ced0a961-6e04-44b6-85ee-980bde8820b3","method":"GET","url":"/api/works","statusCode":200,"durationMs":47,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:06 [INFO] [request] HTTP request started {"requestId":"deab130a-3db5-47c6-9c5e-82575c1e5d4c","method":"GET","url":"/api/works/4","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:06 [INFO] [request] HTTP request started {"requestId":"c006d914-1a80-47ed-86f3-e9fb74262fb3","method":"GET","url":"/api/works/4/comments","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:06 [INFO] [request] HTTP request finished {"requestId":"deab130a-3db5-47c6-9c5e-82575c1e5d4c","method":"GET","url":"/api/works/4","statusCode":200,"durationMs":5,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:06 [INFO] [request] HTTP request finished {"requestId":"c006d914-1a80-47ed-86f3-e9fb74262fb3","method":"GET","url":"/api/works/4/comments","statusCode":200,"durationMs":38,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:09 [INFO] [request] HTTP request started {"requestId":"47b66946-b122-4633-9a15-1243f522f91f","method":"POST","url":"/api/works/4/comments","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:09 [INFO] [work.routes] Comment created {"requestId":"47b66946-b122-4633-9a15-1243f522f91f","workId":"4","commentId":"4","userId":"1765592205256"}
+2026-05-20 19:33:09 [INFO] [request] HTTP request finished {"requestId":"47b66946-b122-4633-9a15-1243f522f91f","method":"POST","url":"/api/works/4/comments","statusCode":201,"durationMs":6,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
+2026-05-20 19:33:11 [INFO] [request] HTTP request started {"requestId":"d6294966-0374-43e6-b0e9-40e64a264c10","method":"POST","url":"/api/comments/4/like","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:11 [INFO] [comment.routes] Comment like toggled {"requestId":"d6294966-0374-43e6-b0e9-40e64a264c10","commentId":"4","userId":"1765592205256"}
+2026-05-20 19:33:11 [INFO] [request] HTTP request finished {"requestId":"d6294966-0374-43e6-b0e9-40e64a264c10","method":"POST","url":"/api/comments/4/like","statusCode":200,"durationMs":4,"sessionType":"jwt","userId":"1765592205256","role":"moderator"}
+2026-05-20 19:33:23 [INFO] [request] HTTP request started {"requestId":"b10eaa7a-7ba4-48fe-aa80-47b52f521af0","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:23 [INFO] [auth.routes] User login attempt {"requestId":"b10eaa7a-7ba4-48fe-aa80-47b52f521af0","loginInput":"TEO29"}
+2026-05-20 19:33:23 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-20 19:33:23 [INFO] [auth.routes] User login successful {"requestId":"b10eaa7a-7ba4-48fe-aa80-47b52f521af0","userId":"1778087941565","login":"TEO29","email":"dsadasdjhak@gmail.com","role":"user"}
+2026-05-20 19:33:23 [INFO] [request] HTTP request finished {"requestId":"b10eaa7a-7ba4-48fe-aa80-47b52f521af0","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":63,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:23 [INFO] [request] HTTP request started {"requestId":"ab0fb4b1-ba7e-452e-93c9-ddf60f9aca2d","method":"GET","url":"/api/works","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:23 [INFO] [work.routes] Published works requested {"requestId":"ab0fb4b1-ba7e-452e-93c9-ddf60f9aca2d"}
+2026-05-20 19:33:23 [INFO] [request] HTTP request finished {"requestId":"ab0fb4b1-ba7e-452e-93c9-ddf60f9aca2d","method":"GET","url":"/api/works","statusCode":200,"durationMs":38,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:24 [INFO] [request] HTTP request started {"requestId":"866d5fcb-2fac-49fd-a330-5b69806c660f","method":"GET","url":"/api/works/4","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:24 [INFO] [request] HTTP request started {"requestId":"01d68864-15fe-41b3-9be6-7fff5de02387","method":"GET","url":"/api/works/4/comments","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:24 [INFO] [request] HTTP request finished {"requestId":"866d5fcb-2fac-49fd-a330-5b69806c660f","method":"GET","url":"/api/works/4","statusCode":200,"durationMs":4,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:24 [INFO] [request] HTTP request finished {"requestId":"01d68864-15fe-41b3-9be6-7fff5de02387","method":"GET","url":"/api/works/4/comments","statusCode":200,"durationMs":37,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:30 [INFO] [request] HTTP request started {"requestId":"ce2222c1-5bac-4979-b6ae-c8b70673f873","method":"POST","url":"/api/works/4/comments","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:30 [INFO] [work.routes] Comment created {"requestId":"ce2222c1-5bac-4979-b6ae-c8b70673f873","workId":"4","commentId":"5","userId":"1778087941565"}
+2026-05-20 19:33:30 [INFO] [request] HTTP request finished {"requestId":"ce2222c1-5bac-4979-b6ae-c8b70673f873","method":"POST","url":"/api/works/4/comments","statusCode":201,"durationMs":5,"sessionType":"jwt","userId":"1778087941565","role":"user"}
+2026-05-20 19:33:31 [INFO] [request] HTTP request started {"requestId":"26cc9f29-3ed6-4bbb-be19-70dcb5ce6643","method":"POST","url":"/api/comments/4/like","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:31 [INFO] [comment.routes] Comment like toggled {"requestId":"26cc9f29-3ed6-4bbb-be19-70dcb5ce6643","commentId":"4","userId":"1778087941565"}
+2026-05-20 19:33:31 [INFO] [request] HTTP request finished {"requestId":"26cc9f29-3ed6-4bbb-be19-70dcb5ce6643","method":"POST","url":"/api/comments/4/like","statusCode":200,"durationMs":4,"sessionType":"jwt","userId":"1778087941565","role":"user"}
+2026-05-20 19:33:38 [INFO] [request] HTTP request started {"requestId":"91adfe73-9dae-46b4-91e0-eaae84098424","method":"POST","url":"/api/auth/login","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:38 [INFO] [auth.routes] User login attempt {"requestId":"91adfe73-9dae-46b4-91e0-eaae84098424","loginInput":"poto7"}
+2026-05-20 19:33:38 [INFO] [fileDb] Users loaded successfully {"count":3}
+2026-05-20 19:33:38 [INFO] [auth.routes] User login successful {"requestId":"91adfe73-9dae-46b4-91e0-eaae84098424","userId":"1765592205256","login":"poto7","email":"dima.medvid.06@gmail.com","role":"moderator"}
+2026-05-20 19:33:38 [INFO] [request] HTTP request finished {"requestId":"91adfe73-9dae-46b4-91e0-eaae84098424","method":"POST","url":"/api/auth/login","statusCode":200,"durationMs":57,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:38 [INFO] [request] HTTP request started {"requestId":"020bcdee-bd41-40d1-9cec-122a26c87533","method":"GET","url":"/api/works","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:33:38 [INFO] [work.routes] Published works requested {"requestId":"020bcdee-bd41-40d1-9cec-122a26c87533"}
+2026-05-20 19:33:38 [INFO] [request] HTTP request finished {"requestId":"020bcdee-bd41-40d1-9cec-122a26c87533","method":"GET","url":"/api/works","statusCode":200,"durationMs":2,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:34:19 [INFO] [request] HTTP request started {"requestId":"79b8241f-8e64-411b-8c50-3a40988e6559","method":"GET","url":"/api/works/4","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:34:19 [INFO] [request] HTTP request started {"requestId":"c57ff858-3072-4f8f-bc90-7ccf0f8aae1e","method":"GET","url":"/api/works/4/comments","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:34:19 [INFO] [request] HTTP request finished {"requestId":"79b8241f-8e64-411b-8c50-3a40988e6559","method":"GET","url":"/api/works/4","statusCode":200,"durationMs":40,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:34:19 [INFO] [request] HTTP request finished {"requestId":"c57ff858-3072-4f8f-bc90-7ccf0f8aae1e","method":"GET","url":"/api/works/4/comments","statusCode":200,"durationMs":42,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:34:38 [INFO] [request] HTTP request started {"requestId":"65913ade-8e53-4025-bba3-dcf377bbaecd","method":"GET","url":"/api/works","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:34:38 [INFO] [work.routes] Published works requested {"requestId":"65913ade-8e53-4025-bba3-dcf377bbaecd"}
+2026-05-20 19:34:38 [INFO] [request] HTTP request finished {"requestId":"65913ade-8e53-4025-bba3-dcf377bbaecd","method":"GET","url":"/api/works","statusCode":304,"durationMs":34,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:56:07 [INFO] [request] HTTP request started {"requestId":"5a7a261b-03b6-4dee-854c-8277cd544e3e","method":"GET","url":"/api/comments/my","ip":"::ffff:127.0.0.1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:56:07 [WARNING] [request] HTTP request finished with client error {"requestId":"5a7a261b-03b6-4dee-854c-8277cd544e3e","method":"GET","url":"/api/comments/my","statusCode":404,"durationMs":1,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-20 19:56:11 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}
