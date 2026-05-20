@@ -1,37 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-import worksData from "../../data/works.json";
 import { logout } from "../../store/authSlice";
 import {
-  getAllPublishedWorks,
   getUserFullName,
   getUserId,
 } from "../../utils/worksStorage";
 import {
-  deleteReadingProgressByWork,
-  getAllReadingProgress,
-  getContinueReadingWorks,
-  saveAllReadingProgress,
-} from "../../utils/readingProgressStorage";
-import {
-  getFavoriteWorkIds,
-  getFavoriteWorks,
-} from "../../utils/favoritesStorage";
-import {
   MAX_FAVORITE_GENRES,
   getAvailableGenres,
-  getFavoriteGenresByUser,
-  getUserFavoriteGenres,
-  saveFavoriteGenresByUser,
-  toggleFavoriteGenreForUser,
 } from "../../utils/favoriteGenresStorage";
-import { deleteWork, getMyWorks } from "../../api/worksApi";
+import { deleteWork, getMyWorks, getWorks } from "../../api/worksApi";
 import {
   deleteComment,
   getMyComments,
   updateComment,
 } from "../../api/commentsApi";
+import {
+  deleteReadingProgressFromApi,
+  getFavoriteGenresFromApi,
+  getFavoriteWorkIdsFromApi,
+  getReadingProgressFromApi,
+  saveFavoriteGenresToApi,
+} from "../../api/userActivityApi";
 import "./CabinetPage.css";
 
 /**
@@ -80,13 +71,18 @@ export default function CabinetPage() {
 
   const [worksFilter, setWorksFilter] = useState("all");
 
-  const [favoriteGenresByUser, setFavoriteGenresByUser] = useState(() =>
-    getFavoriteGenresByUser(),
-  );
+  const [publishedWorks, setPublishedWorks] = useState([]);
+  const [publishedWorksError, setPublishedWorksError] = useState("");
 
-  const [readingProgressByUser, setReadingProgressByUser] = useState(() =>
-    getAllReadingProgress(),
-  );
+  const [favoriteWorkIds, setFavoriteWorkIds] = useState([]);
+  const [favoriteGenres, setFavoriteGenres] = useState([]);
+  const [favoriteGenresError, setFavoriteGenresError] = useState("");
+  const [isFavoriteGenresSaving, setIsFavoriteGenresSaving] = useState(false);
+
+  const [readingProgress, setReadingProgress] = useState([]);
+  const [isReadingProgressLoading, setIsReadingProgressLoading] = useState(true);
+  const [readingProgressError, setReadingProgressError] = useState("");
+  const [deletingProgressWorkId, setDeletingProgressWorkId] = useState(null);
 
   const [userWorks, setUserWorks] = useState([]);
   const [isUserWorksLoading, setIsUserWorksLoading] = useState(true);
@@ -102,31 +98,18 @@ export default function CabinetPage() {
   const [editingCommentText, setEditingCommentText] = useState("");
   const [editingCommentRating, setEditingCommentRating] = useState("5");
 
-  const favoriteIds = useMemo(() => {
-    return getFavoriteWorkIds();
-  }, []);
-
-  const allPublishedWorks = useMemo(() => {
-    return getAllPublishedWorks(worksData);
-  }, []);
-
   const userId = getUserId(user);
   const userFullName = getUserFullName(user);
 
-  const availableGenres = getAvailableGenres(allPublishedWorks);
+  const availableGenres = useMemo(() => {
+    return getAvailableGenres(publishedWorks);
+  }, [publishedWorks]);
 
-  const selectedFavoriteGenres = getUserFavoriteGenres(
-    favoriteGenresByUser,
-    userId,
-  );
-
-  const continueReadingWorks = getContinueReadingWorks(
-    allPublishedWorks,
-    readingProgressByUser,
-    userId,
-  );
-
-  const favoriteWorks = getFavoriteWorks(allPublishedWorks, favoriteIds);
+  const favoriteWorks = useMemo(() => {
+    return publishedWorks.filter((work) =>
+      favoriteWorkIds.some((favoriteId) => String(favoriteId) === String(work.id)),
+    );
+  }, [publishedWorks, favoriteWorkIds]);
 
   const filteredUserWorks = userWorks.filter((work) => {
     if (worksFilter === "all") {
@@ -139,11 +122,39 @@ export default function CabinetPage() {
   useEffect(() => {
     let isMounted = true;
 
-    /**
-     * Завантажує власні твори користувача з backend.
-     *
-     * @returns {Promise<void>}
-     */
+    const loadPublishedWorks = async () => {
+      try {
+        setPublishedWorksError("");
+
+        const works = await getWorks();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setPublishedWorks(works);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setPublishedWorksError(
+          error.message ||
+            "Не вдалося завантажити опубліковані твори для обраного.",
+        );
+      }
+    };
+
+    loadPublishedWorks();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
     const loadUserWorks = async () => {
       if (!token) {
         setIsUserWorksLoading(false);
@@ -188,11 +199,6 @@ export default function CabinetPage() {
   useEffect(() => {
     let isMounted = true;
 
-    /**
-     * Завантажує коментарі поточного користувача з backend.
-     *
-     * @returns {Promise<void>}
-     */
     const loadUserComments = async () => {
       if (!token) {
         setIsUserCommentsLoading(false);
@@ -236,56 +242,130 @@ export default function CabinetPage() {
     };
   }, [token]);
 
-  /**
-   * Виконує вихід користувача з акаунту.
-   *
-   * @returns {void}
-   */
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUserActivity = async () => {
+      if (!token) {
+        setIsReadingProgressLoading(false);
+        return;
+      }
+
+      try {
+        setIsReadingProgressLoading(true);
+        setReadingProgressError("");
+        setFavoriteGenresError("");
+
+        const [favoriteIds, progress, genres] = await Promise.all([
+          getFavoriteWorkIdsFromApi(token),
+          getReadingProgressFromApi(token),
+          getFavoriteGenresFromApi(token),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setFavoriteWorkIds(favoriteIds);
+        setReadingProgress(progress);
+        setFavoriteGenres(genres);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setReadingProgressError(
+          error.message ||
+            "Не вдалося завантажити обране, прогрес читання або жанри.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsReadingProgressLoading(false);
+        }
+      }
+    };
+
+    loadUserActivity();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
   const onLogout = () => {
     dispatch(logout());
     navigate("/login");
   };
 
-  /**
-   * Додає або прибирає жанр зі списку улюблених жанрів користувача.
-   *
-   * @param {string} genre - Назва жанру.
-   * @returns {void}
-   */
-  const toggleFavoriteGenre = (genre) => {
-    const updatedFavoriteGenresByUser = toggleFavoriteGenreForUser(
-      favoriteGenresByUser,
-      userId,
-      genre,
-    );
+  const toggleFavoriteGenre = async (genre) => {
+    if (!token) {
+      setFavoriteGenresError("Щоб обрати улюблені жанри, потрібно увійти.");
+      return;
+    }
 
-    setFavoriteGenresByUser(updatedFavoriteGenresByUser);
-    saveFavoriteGenresByUser(updatedFavoriteGenresByUser);
+    const isSelected = favoriteGenres.includes(genre);
+
+    if (!isSelected && favoriteGenres.length >= MAX_FAVORITE_GENRES) {
+      setFavoriteGenresError(
+        `Можна обрати не більше ${MAX_FAVORITE_GENRES} жанрів.`,
+      );
+      return;
+    }
+
+    const updatedGenres = isSelected
+      ? favoriteGenres.filter((item) => item !== genre)
+      : [...favoriteGenres, genre];
+
+    try {
+      setIsFavoriteGenresSaving(true);
+      setFavoriteGenresError("");
+
+      const savedGenres = await saveFavoriteGenresToApi(updatedGenres, token);
+
+      setFavoriteGenres(savedGenres);
+    } catch (error) {
+      setFavoriteGenresError(
+        error.message ||
+          "Не вдалося зберегти улюблені жанри. Перевірте backend.",
+      );
+    } finally {
+      setIsFavoriteGenresSaving(false);
+    }
   };
 
-  /**
-   * Видаляє твір зі списку "Продовжити читання".
-   *
-   * @param {number|string} workId - ID твору.
-   * @returns {void}
-   */
-  const deleteReadingProgress = (workId) => {
-    const updatedReadingProgressByUser = deleteReadingProgressByWork(
-      readingProgressByUser,
-      userId,
-      workId,
+  const deleteReadingProgress = async (workId) => {
+    const shouldDelete = window.confirm(
+      "Прибрати цей твір зі списку продовження читання?",
     );
 
-    setReadingProgressByUser(updatedReadingProgressByUser);
-    saveAllReadingProgress(updatedReadingProgressByUser);
+    if (!shouldDelete) {
+      return;
+    }
+
+    if (!token) {
+      setReadingProgressError("Щоб прибрати прогрес, потрібно увійти.");
+      return;
+    }
+
+    try {
+      setDeletingProgressWorkId(workId);
+      setReadingProgressError("");
+
+      await deleteReadingProgressFromApi(workId, token);
+
+      setReadingProgress((progress) =>
+        progress.filter((item) => String(item.workId) !== String(workId)),
+      );
+    } catch (error) {
+      setReadingProgressError(
+        error.message ||
+          "Не вдалося прибрати прогрес читання. Перевірте backend.",
+      );
+    } finally {
+      setDeletingProgressWorkId(null);
+    }
   };
 
-  /**
-   * Видаляє власний твір з PostgreSQL.
-   *
-   * @param {number|string} workId - ID твору.
-   * @returns {Promise<void>}
-   */
   const deleteOwnWork = async (workId) => {
     const shouldDelete = window.confirm(
       "Ви впевнені, що хочете видалити цей твір? Його буде видалено з бази даних.",
@@ -310,14 +390,13 @@ export default function CabinetPage() {
         works.filter((work) => String(work.id) !== String(workId)),
       );
 
-      const updatedReadingProgressByUser = deleteReadingProgressByWork(
-        readingProgressByUser,
-        userId,
-        workId,
+      setReadingProgress((progress) =>
+        progress.filter((item) => String(item.workId) !== String(workId)),
       );
 
-      setReadingProgressByUser(updatedReadingProgressByUser);
-      saveAllReadingProgress(updatedReadingProgressByUser);
+      setFavoriteWorkIds((ids) =>
+        ids.filter((favoriteId) => String(favoriteId) !== String(workId)),
+      );
     } catch (error) {
       setUserWorksError(
         error.message ||
@@ -328,12 +407,6 @@ export default function CabinetPage() {
     }
   };
 
-  /**
-   * Вмикає режим редагування коментаря користувача.
-   *
-   * @param {Object} comment - Коментар користувача.
-   * @returns {void}
-   */
   const startEditingComment = (comment) => {
     setEditingCommentId(comment.id);
     setEditingCommentText(comment.text);
@@ -341,24 +414,12 @@ export default function CabinetPage() {
     setUserCommentsError("");
   };
 
-  /**
-   * Скасовує редагування коментаря.
-   *
-   * @returns {void}
-   */
   const cancelEditingComment = () => {
     setEditingCommentId(null);
     setEditingCommentText("");
     setEditingCommentRating("5");
   };
 
-  /**
-   * Зберігає зміни коментаря з кабінету користувача через backend.
-   *
-   * @param {React.FormEvent<HTMLFormElement>} event - Подія submit.
-   * @param {number|string} commentId - ID коментаря.
-   * @returns {Promise<void>}
-   */
   const saveEditedComment = async (event, commentId) => {
     event.preventDefault();
 
@@ -411,12 +472,6 @@ export default function CabinetPage() {
     }
   };
 
-  /**
-   * Видаляє коментар користувача через backend.
-   *
-   * @param {number|string} commentId - ID коментаря.
-   * @returns {Promise<void>}
-   */
   const deleteOwnComment = async (commentId) => {
     const shouldDelete = window.confirm(
       "Ви впевнені, що хочете видалити цей коментар?",
@@ -499,7 +554,7 @@ export default function CabinetPage() {
             <h2 className="cabinet__genres-title">Улюблені жанри</h2>
 
             <span className="cabinet__genres-counter">
-              Обрано {selectedFavoriteGenres.length} з {MAX_FAVORITE_GENRES}
+              Обрано {favoriteGenres.length} з {MAX_FAVORITE_GENRES}
             </span>
           </div>
 
@@ -508,12 +563,17 @@ export default function CabinetPage() {
             будуть показуватись першими.
           </p>
 
+          {favoriteGenresError && (
+            <p className="cabinet__empty">{favoriteGenresError}</p>
+          )}
+
           <div className="cabinet__genres-list">
             {availableGenres.map((genreName) => {
-              const isSelected = selectedFavoriteGenres.includes(genreName);
+              const isSelected = favoriteGenres.includes(genreName);
               const isDisabled =
-                !isSelected &&
-                selectedFavoriteGenres.length >= MAX_FAVORITE_GENRES;
+                isFavoriteGenresSaving ||
+                (!isSelected &&
+                  favoriteGenres.length >= MAX_FAVORITE_GENRES);
 
               return (
                 <button
@@ -536,43 +596,68 @@ export default function CabinetPage() {
       <section className="cabinet__section">
         <h2 className="cabinet__section-title">Продовжити читання</h2>
 
-        {continueReadingWorks.length === 0 ? (
-          <p className="cabinet__empty">Ви ще не починали читати твори.</p>
-        ) : (
+        {isReadingProgressLoading && (
+          <p className="cabinet__empty">Завантажуємо прогрес читання...</p>
+        )}
+
+        {!isReadingProgressLoading && readingProgressError && (
+          <p className="cabinet__empty">{readingProgressError}</p>
+        )}
+
+        {!isReadingProgressLoading &&
+          !readingProgressError &&
+          readingProgress.length === 0 && (
+          <p className="cabinet__empty">
+            Ви ще не починали читати твори.
+          </p>
+        )}
+
+        {!isReadingProgressLoading &&
+          !readingProgressError &&
+          readingProgress.length > 0 && (
           <div className="cabinet__list">
-            {continueReadingWorks.map((work) => (
-              <article className="cabinet__work" key={work.id}>
-                <img
-                  className="cabinet__work-cover"
-                  src={work.cover}
-                  alt={work.title}
-                />
+            {readingProgress.map((work) => {
+              const isDeleting =
+                  String(deletingProgressWorkId) === String(work.workId);
 
-                <div className="cabinet__work-info">
-                  <h3 className="cabinet__work-title">{work.title}</h3>
-                  <p className="cabinet__work-author">{work.author}</p>
+              return (
+                <article className="cabinet__work" key={work.workId}>
+                  <img
+                    className="cabinet__work-cover"
+                    src={work.cover}
+                    alt={work.title}
+                  />
 
-                  <p className="cabinet__work-description">
-                    Ви зупинилися на сторінці {work.currentPage + 1} з{" "}
-                    {work.pagesCount}.
-                  </p>
+                  <div className="cabinet__work-info">
+                    <h3 className="cabinet__work-title">{work.title}</h3>
+                    <p className="cabinet__work-author">{work.author}</p>
 
-                  <div className="cabinet__work-actions">
-                    <Link className="cabinet__link" to={`/works/${work.id}`}>
-                      Продовжити читання
-                    </Link>
+                    <p className="cabinet__work-description">
+                      Ви зупинилися на сторінці {work.currentPage + 1} з{" "}
+                      {work.pagesCount}.
+                    </p>
 
-                    <button
-                      className="cabinet__delete"
-                      type="button"
-                      onClick={() => deleteReadingProgress(work.id)}
-                    >
-                      Прибрати
-                    </button>
+                    <div className="cabinet__work-actions">
+                      <Link
+                        className="cabinet__link"
+                        to={`/works/${work.workId}`}
+                      >
+                        Продовжити читання
+                      </Link>
+
+                      <button
+                        className="cabinet__delete"
+                        type="button"
+                        onClick={() => deleteReadingProgress(work.workId)}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? "Прибираємо..." : "Прибрати"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
@@ -742,7 +827,11 @@ export default function CabinetPage() {
       <section className="cabinet__section">
         <h2 className="cabinet__section-title">Обрані твори</h2>
 
-        {favoriteWorks.length === 0 ? (
+        {publishedWorksError && (
+          <p className="cabinet__empty">{publishedWorksError}</p>
+        )}
+
+        {!publishedWorksError && favoriteWorks.length === 0 ? (
           <p className="cabinet__empty">Ви ще не додали твори в обране.</p>
         ) : (
           <div className="cabinet__list">
@@ -786,7 +875,7 @@ export default function CabinetPage() {
           !userCommentsError &&
           userComments.length === 0 && (
           <p className="cabinet__empty">
-            Ви ще не залишали коментарів до творів.
+              Ви ще не залишали коментарів до творів.
           </p>
         )}
 
@@ -843,7 +932,7 @@ export default function CabinetPage() {
                       </label>
 
                       <label className="cabinet__comment-edit-label">
-                          Коментар
+                        Коментар
                         <textarea
                           className="cabinet__comment-textarea"
                           value={editingCommentText}
@@ -870,7 +959,7 @@ export default function CabinetPage() {
                           onClick={cancelEditingComment}
                           disabled={isProcessing}
                         >
-                            Скасувати
+                          Скасувати
                         </button>
                       </div>
                     </form>
