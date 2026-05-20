@@ -6,6 +6,7 @@ const swaggerUi = require("swagger-ui-express");
 
 const authRoutes = require("./routes/auth.routes");
 const workRoutes = require("./routes/work.routes");
+const commentRoutes = require("./routes/comment.routes");
 const swaggerSpec = require("./docs/swagger");
 const requestContext = require("./middlewares/requestContext");
 const requestLogger = require("./middlewares/requestLogger");
@@ -15,100 +16,32 @@ const { checkDbConnection } = require("./utils/db");
 
 /**
  * Основний Express-застосунок серверної частини.
- *
- * Сервер відповідає за:
- * - обробку HTTP-запитів;
- * - підключення middleware;
- * - маршрутизацію API авторизації;
- * - маршрутизацію API творів;
- * - надання Swagger UI та OpenAPI JSON;
- * - health-check endpoint для перевірки доступності сервера;
- * - перевірку підключення до PostgreSQL.
  */
 const app = express();
 const log = createModuleLogger("server");
 
-/**
- * Middleware для налаштування CORS.
- *
- * Дозволяє клієнтському застосунку з адреси `http://localhost:3000`
- * виконувати запити до backend API.
- */
 app.use(cors({ origin: "http://localhost:3000", credentials: false }));
 
-/**
- * Middleware для автоматичного розбору JSON у тілі запиту.
- *
- * Дозволяє працювати з `req.body` як зі звичайним JavaScript-об'єктом.
- */
 app.use(express.json());
 
-/**
- * Middleware для створення унікального ідентифікатора запиту.
- *
- * Використовується для зв'язування одного HTTP-запиту
- * з усіма записами у логах та відповіддю клієнту.
- */
 app.use(requestContext);
 
-/**
- * Middleware для базового логування HTTP-запитів.
- */
 app.use(requestLogger);
 
-/**
- * Підключення маршрутів авторизації.
- *
- * Усі маршрути з модуля `auth.routes` доступні з префіксом `/api/auth`.
- */
 app.use("/api/auth", authRoutes);
 
-/**
- * Підключення маршрутів творів.
- *
- * Усі маршрути з модуля `work.routes` доступні з префіксом `/api/works`.
- */
 app.use("/api/works", workRoutes);
 
-/**
- * Swagger UI для інтерактивного перегляду і тестування API.
- *
- * Документація доступна за адресою `/api/docs`.
- */
+app.use("/api/comments", commentRoutes);
+
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
-/**
- * OpenAPI JSON-специфікація API.
- *
- * Машиночитний опис API доступний за адресою `/api/docs.json`.
- *
- * @param {object} req - HTTP-запит Express.
- * @param {object} res - HTTP-відповідь Express.
- * @returns {object} JSON-специфікація OpenAPI.
- */
 app.get("/api/docs.json", (req, res) => res.json(swaggerSpec));
-
-/**
- * @openapi
- * /api/health:
- *   get:
- *     tags:
- *       - System
- *     summary: Перевірка доступності сервера
- *     description: Технічний endpoint для перевірки того, що backend і база даних працюють.
- *     responses:
- *       "200":
- *         description: Сервер доступний
- */
 
 /**
  * GET /api/health
  *
  * Технічний endpoint для перевірки доступності сервера та PostgreSQL.
- *
- * @param {object} req - HTTP-запит Express.
- * @param {object} res - HTTP-відповідь Express.
- * @returns {Promise<object>} JSON-об'єкт зі статусом сервера та бази даних.
  */
 app.get("/api/health", async (req, res) => {
   log.debug("Health-check requested", {
@@ -123,19 +56,8 @@ app.get("/api/health", async (req, res) => {
   });
 });
 
-/**
- * Централізований middleware для обробки всіх помилок Express.
- *
- * Має бути підключений після всіх маршрутів.
- */
 app.use(errorHandler);
 
-/**
- * Запускає HTTP-сервер, якщо файл виконано напряму.
- *
- * Під час імпорту модуля в тести сервер не запускається автоматично,
- * що дозволяє використовувати `app` у test environment без відкриття порту.
- */
 if (require.main === module) {
   const PORT = Number(process.env.PORT || 4000);
 
@@ -145,12 +67,6 @@ if (require.main === module) {
     });
   });
 
-  /**
-   * Виконує коректне завершення роботи сервера.
-   *
-   * @param {string} signal - Назва сигналу завершення.
-   * @returns {void}
-   */
   const gracefulShutdown = (signal) => {
     log.info("Shutdown signal received", { signal });
 
@@ -163,9 +79,6 @@ if (require.main === module) {
   process.on("SIGINT", () => gracefulShutdown("SIGINT"));
   process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
-  /**
-   * Логування критичних необроблених винятків процесу.
-   */
   process.on("uncaughtException", (error) => {
     log.critical("Uncaught exception", {
       errorMessage: error.message,
@@ -174,9 +87,6 @@ if (require.main === module) {
     process.exit(1);
   });
 
-  /**
-   * Логування необроблених rejected Promise.
-   */
   process.on("unhandledRejection", (reason) => {
     log.critical("Unhandled promise rejection", {
       reason: reason instanceof Error ? reason.message : String(reason),
@@ -185,7 +95,4 @@ if (require.main === module) {
   });
 }
 
-/**
- * Експорт Express-застосунку для тестування та повторного використання.
- */
 module.exports = app;

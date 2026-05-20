@@ -6,11 +6,6 @@
     "auditLog": "D:\\Диплом\\code\\server\\logs\\.be3ff845416347d48fdaaffc11e64e2d9474db2b-audit.json",
     "files": [
         {
-            "date": 1778080903041,
-            "name": "D:\\Диплом\\code\\server\\logs\\application-2026-05-06.log",
-            "hash": "b7184df3f2f178e30339eeb60dc2eeef7e56a9609d5c300603100586a9fd60bd"
-        },
-        {
             "date": 1778345541849,
             "name": "D:\\Диплом\\code\\server\\logs\\application-2026-05-09.log",
             "hash": "7988a3efcebdc5aa01b1f4d784ffc408c44c26b6d1dd3ec53b9ab5d60016a39f"
@@ -39,6 +34,11 @@
             "date": 1779202371810,
             "name": "D:\\Диплом\\code\\server\\logs\\application-2026-05-19.log",
             "hash": "3379d97a22b710e0ee6dff7b988a7a7aa1858b8336f2693ab338375c7db67a2e"
+        },
+        {
+            "date": 1779292543564,
+            "name": "D:\\Диплом\\code\\server\\logs\\application-2026-05-20.log",
+            "hash": "bce35da2dc08a56bd74301afa8e941fd53ca565f050b2bcd8553a19db318f677"
         }
     ],
     "hashType": "sha256"

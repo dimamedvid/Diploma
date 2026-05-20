@@ -10,6 +10,10 @@ const {
   rejectWorkById,
   updateOwnWorkById,
 } = require("../utils/workDb");
+const {
+  createComment,
+  getCommentsByWorkId,
+} = require("../utils/commentDb");
 const { authMiddleware } = require("../middlewares/auth.middleware");
 const { createModuleLogger } = require("../utils/logger");
 const AppError = require("../utils/AppError");
@@ -39,6 +43,18 @@ function arePagesValid(pages) {
     pages.length > 0 &&
     pages.every((page) => isNonEmptyString(page))
   );
+}
+
+/**
+ * Перевіряє коректність оцінки.
+ *
+ * @param {unknown} rating - Оцінка.
+ * @returns {boolean} true, якщо оцінка від 1 до 5.
+ */
+function isValidRating(rating) {
+  const numberRating = Number(rating);
+
+  return Number.isInteger(numberRating) && numberRating >= 1 && numberRating <= 5;
 }
 
 /**
@@ -184,6 +200,84 @@ router.get("/my", authMiddleware, async (req, res, next) => {
 
     return res.json(works);
   } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * GET /api/works/:id/comments
+ *
+ * Повертає всі коментарі до твору.
+ */
+router.get("/:id/comments", async (req, res, next) => {
+  try {
+    const comments = await getCommentsByWorkId(req.params.id);
+
+    return res.json(comments);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * POST /api/works/:id/comments
+ *
+ * Додає коментар і оцінку до твору.
+ */
+router.post("/:id/comments", authMiddleware, async (req, res, next) => {
+  try {
+    const { text, rating } = req.body;
+
+    if (!isNonEmptyString(text)) {
+      throw new AppError(
+        "Текст коментаря є обов'язковим.",
+        400,
+        { field: "text" },
+        "comments.textRequired",
+      );
+    }
+
+    if (!isValidRating(rating)) {
+      throw new AppError(
+        "Оцінка має бути числом від 1 до 5.",
+        400,
+        { field: "rating" },
+        "comments.invalidRating",
+      );
+    }
+
+    const author =
+      `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
+      req.user.login;
+
+    const comment = await createComment({
+      workId: req.params.id,
+      userId: req.user.id,
+      author,
+      text: text.trim(),
+      rating: Number(rating),
+    });
+
+    log.info("Comment created", {
+      requestId: req.requestId,
+      workId: req.params.id,
+      commentId: comment.id,
+      userId: req.user.id,
+    });
+
+    return res.status(201).json(comment);
+  } catch (error) {
+    if (error.code === "23505") {
+      return next(
+        new AppError(
+          "Ви вже залишили коментар до цього твору.",
+          409,
+          { workId: req.params.id },
+          "comments.alreadyExists",
+        ),
+      );
+    }
+
     return next(error);
   }
 });
