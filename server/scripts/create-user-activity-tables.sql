@@ -1,0 +1,24 @@
+CREATE TABLE IF NOT EXISTS favorite_works (
+    id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL,
+    work_id BIGINT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, work_id)
+);
+
+CREATE TABLE IF NOT EXISTS reading_progress (
+    id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL,
+    work_id BIGINT NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+    current_page INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, work_id)
+);
+
+CREATE TABLE IF NOT EXISTS favorite_genres (
+    id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL,
+    genre VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, genre)
+);

@@ -7,6 +7,7 @@ const swaggerUi = require("swagger-ui-express");
 const authRoutes = require("./routes/auth.routes");
 const workRoutes = require("./routes/work.routes");
 const commentRoutes = require("./routes/comment.routes");
+const userActivityRoutes = require("./routes/userActivity.routes");
 const swaggerSpec = require("./docs/swagger");
 const requestContext = require("./middlewares/requestContext");
 const requestLogger = require("./middlewares/requestLogger");
@@ -14,9 +15,6 @@ const errorHandler = require("./middlewares/errorHandler");
 const { createModuleLogger } = require("./utils/logger");
 const { checkDbConnection } = require("./utils/db");
 
-/**
- * Основний Express-застосунок серверної частини.
- */
 const app = express();
 const log = createModuleLogger("server");
 
@@ -33,6 +31,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/works", workRoutes);
 
 app.use("/api/comments", commentRoutes);
+
+app.use("/api/me", userActivityRoutes);
 
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 
