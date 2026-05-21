@@ -39,6 +39,11 @@
             "date": 1779292543564,
             "name": "D:\\Диплом\\code\\server\\logs\\application-2026-05-20.log",
             "hash": "bce35da2dc08a56bd74301afa8e941fd53ca565f050b2bcd8553a19db318f677"
+        },
+        {
+            "date": 1779379440628,
+            "name": "D:\\Диплом\\code\\server\\logs\\application-2026-05-21.log",
+            "hash": "94e7d49a64bf5606799cb7f14b3a13143f5dc585c443ad43365a1484b1eb5825"
         }
     ],
     "hashType": "sha256"

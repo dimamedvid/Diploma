@@ -1,590 +1,307 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const { readUsers, writeUsers } = require("../utils/fileDb");
-const { signToken } = require("../utils/jwt");
-const { authMiddleware } = require("../middlewares/auth.middleware");
+const jwt = require("jsonwebtoken");
+const {
+  createUser,
+  findExistingUser,
+  findUserByLoginOrEmail,
+} = require("../utils/userDb");
 const { createModuleLogger } = require("../utils/logger");
 const AppError = require("../utils/AppError");
-
-/**
- * Маршрути авторизації та реєстрації користувачів.
- *
- * Модуль реалізує API для:
- * - реєстрації нового користувача;
- * - входу в систему;
- * - отримання даних поточного авторизованого користувача.
- *
- * У процесі обробки запитів використовуються:
- * - валідація вхідних даних;
- * - перевірка унікальності логіна та email;
- * - хешування пароля;
- * - генерація JWT-токена;
- * - middleware перевірки авторизації;
- * - централізована обробка помилок через AppError.
- */
 
 const router = express.Router();
 const log = createModuleLogger("auth.routes");
 
+const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+const PASSWORD_SALT_ROUNDS = 10;
+
 /**
- * Нормалізує email перед валідацією або порівнянням.
+ * Перевіряє, чи значення є непорожнім рядком.
  *
- * Видаляє зайві пробіли на початку та в кінці рядка
- * і переводить email до нижнього регістру.
- *
- * @param {string} email - Email, отриманий із запиту або сховища.
- * @returns {string} Нормалізований email.
+ * @param {unknown} value - Значення.
+ * @returns {boolean} true, якщо це непорожній рядок.
  */
-function normalizeEmail(email) {
-  return String(email || "").trim().toLowerCase();
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 /**
- * Перевіряє коректність формату email.
+ * Перевіряє базову валідність email.
  *
- * Використовує регулярний вираз для базової перевірки,
- * що email містить локальну частину, символ `@`
- * та доменну частину.
- *
- * @param {string} email - Email для перевірки.
- * @returns {boolean} `true`, якщо email має коректний формат, інакше `false`.
+ * @param {string} email - Email.
+ * @returns {boolean} true, якщо email схожий на коректний.
  */
-function isEmailValid(email) {
+function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 /**
- * Перевіряє коректність логіна.
+ * Створює JWT token для користувача.
  *
- * Логін повинен містити від 4 до 25 символів
- * і складатися лише з латинських літер та цифр.
- *
- * @param {string} login - Логін користувача.
- * @returns {boolean} `true`, якщо логін відповідає правилам, інакше `false`.
+ * @param {Object} user - Користувач.
+ * @returns {string} JWT token.
  */
-function isLoginValid(login) {
-  return /^[a-zA-Z0-9]{4,25}$/.test(login);
+function createToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      login: user.login,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+    },
+    JWT_SECRET,
+    {
+      expiresIn: JWT_EXPIRES_IN,
+    },
+  );
 }
 
 /**
- * Перевіряє коректність пароля.
+ * Нормалізує користувача для відповіді frontend.
  *
- * Пароль повинен:
- * - містити від 8 до 20 символів;
- * - містити хоча б одну літеру;
- * - містити хоча б одну цифру.
- *
- * @param {string} password - Пароль користувача.
- * @returns {boolean} `true`, якщо пароль відповідає правилам, інакше `false`.
+ * @param {Object} user - Користувач.
+ * @returns {Object} Дані користувача.
  */
-function isPasswordValid(password) {
-  return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,20}$/.test(password);
+function createAuthResponse(user) {
+  return {
+    user,
+    token: createToken(user),
+  };
 }
-
-/**
- * @openapi
- * /api/auth/register:
- *   post:
- *     tags:
- *       - Auth
- *     summary: Реєстрація нового користувача
- *     description: Створює нового користувача, хешує пароль і повертає JWT-токен та дані користувача.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/RegisterRequest'
- *           examples:
- *             default:
- *               value:
- *                 login: user123
- *                 firstName: Dmytro
- *                 lastName: Medvid
- *                 email: user@mail.com
- *                 password: Passw0rd123
- *     responses:
- *       "200":
- *         description: Користувача успішно зареєстровано
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthSuccessResponse'
- *             examples:
- *               success:
- *                 value:
- *                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                   user:
- *                     id: "1740000000000"
- *                     login: user123
- *                     firstName: Dmytro
- *                     lastName: Medvid
- *                     email: user@mail.com
- *                     role: user
- *       "400":
- *         description: Помилка валідації вхідних даних
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missingFields:
- *                 value:
- *                   message: Будь ласка, заповніть усі обов’язкові поля.
- *       "409":
- *         description: Конфлікт через зайнятий логін або email
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               duplicateLogin:
- *                 value:
- *                   message: Такий логін вже зайнятий.
- */
 
 /**
  * POST /api/auth/register
  *
- * Реєструє нового користувача в системі.
- *
- * Алгоритм обробки:
- * 1. Отримує та нормалізує дані з тіла запиту.
- * 2. Перевіряє обов'язкові поля.
- * 3. Виконує валідацію логіна, імені, прізвища, email і пароля.
- * 4. Завантажує список користувачів із файлового сховища.
- * 5. Перевіряє унікальність логіна та email.
- * 6. Хешує пароль.
- * 7. Створює нового користувача та зберігає його у сховищі.
- * 8. Генерує JWT-токен і повертає публічні дані користувача.
- *
- * У разі помилки створює контрольований AppError
- * або передає технічний виняток у централізований error handler.
- *
- * @async
- * @param {Object} req - HTTP-запит Express.
- * @param {Object} req.body - Тіло запиту з даними користувача.
- * @param {string} req.body.login - Логін користувача.
- * @param {string} req.body.firstName - Ім'я користувача.
- * @param {string} req.body.lastName - Прізвище користувача.
- * @param {string} req.body.email - Email користувача.
- * @param {string} req.body.password - Пароль користувача.
- * @param {Object} res - HTTP-відповідь Express.
- * @param {Function} next - Функція переходу до наступного middleware.
- * @returns {Promise<Object|void>} JSON-об'єкт із токеном та даними користувача.
+ * Реєструє нового користувача в PostgreSQL.
  */
 router.post("/register", async (req, res, next) => {
   try {
-    const login = String(req.body.login || "").trim();
-    const firstName = String(req.body.firstName || "").trim();
-    const lastName = String(req.body.lastName || "").trim();
-    const email = normalizeEmail(req.body.email);
-    const password = String(req.body.password || "");
-
-    log.info("User registration attempt", {
-      requestId: req.requestId,
+    const {
       login,
       email,
-    });
+      password,
+      firstName = "",
+      lastName = "",
+    } = req.body;
 
-    if (!login || !firstName || !lastName || !email || !password) {
+    if (!isNonEmptyString(login)) {
       throw new AppError(
-        "Будь ласка, заповніть усі обов’язкові поля.",
+        "Логін є обов'язковим.",
         400,
-        {
-          field: "common",
-          reason: "MISSING_REQUIRED_FIELDS",
-        },
-        "auth.requiredFields",
+        { field: "login" },
+        "auth.loginRequired",
       );
     }
 
-    if (!isLoginValid(login)) {
+    if (!isNonEmptyString(email)) {
       throw new AppError(
-        "Логін має містити 4–25 символів, лише латинські літери та цифри.",
+        "Email є обов'язковим.",
         400,
-        {
-          field: "login",
-          value: login,
-          reason: "INVALID_LOGIN_FORMAT",
-        },
-        "auth.invalidLogin",
+        { field: "email" },
+        "auth.emailRequired",
       );
     }
 
-    if (firstName.length < 1 || firstName.length > 50) {
-      throw new AppError("Ім’я повинно містити від 1 до 50 символів.", 400, {
-        field: "firstName",
-        reason: "INVALID_FIRST_NAME_LENGTH",
-      });
-    }
-
-    if (lastName.length < 1 || lastName.length > 50) {
-      throw new AppError("Прізвище повинно містити від 1 до 50 символів.", 400, {
-        field: "lastName",
-        reason: "INVALID_LAST_NAME_LENGTH",
-      });
-    }
-
-    if (!isEmailValid(email)) {
+    if (!isValidEmail(email.trim())) {
       throw new AppError(
-        "Email має бути у форматі name@mail.com.",
+        "Вкажіть коректний email.",
         400,
-        {
-          field: "email",
-          value: email,
-          reason: "INVALID_EMAIL_FORMAT",
-        },
+        { field: "email" },
         "auth.invalidEmail",
       );
     }
 
-    if (!isPasswordValid(password)) {
+    if (!isNonEmptyString(password)) {
       throw new AppError(
-        "Пароль має містити 8–20 символів, щонайменше одну літеру та одну цифру.",
+        "Пароль є обов'язковим.",
         400,
-        {
-          field: "password",
-          reason: "INVALID_PASSWORD_FORMAT",
-        },
-        "auth.invalidPasswordFormat",
+        { field: "password" },
+        "auth.passwordRequired",
       );
     }
 
-    const users = readUsers();
+    if (password.length < 6) {
+      throw new AppError(
+        "Пароль має містити щонайменше 6 символів.",
+        400,
+        { field: "password" },
+        "auth.passwordTooShort",
+      );
+    }
 
-    const loginExists = users.some(
-      (u) => String(u.login || "").trim().toLowerCase() === login.toLowerCase(),
+    const normalizedLogin = login.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existingUser = await findExistingUser(
+      normalizedLogin,
+      normalizedEmail,
     );
-    if (loginExists) {
+
+    if (existingUser) {
+      const field =
+        existingUser.login === normalizedLogin ? "login" : "email";
+
       throw new AppError(
-        "Такий логін уже зайнятий.",
+        field === "login"
+          ? "Користувач з таким логіном вже існує."
+          : "Користувач з таким email вже існує.",
         409,
-        {
-          field: "login",
-          value: login,
-          reason: "LOGIN_ALREADY_EXISTS",
-        },
-        "auth.loginExists",
+        { field },
+        "auth.userAlreadyExists",
       );
     }
 
-    const emailExists = users.some((u) => normalizeEmail(u.email) === email);
-    if (emailExists) {
-      throw new AppError(
-        "Такий email уже зареєстрований.",
-        409,
-        {
-          field: "email",
-          value: email,
-          reason: "EMAIL_ALREADY_EXISTS",
-        },
-        "auth.emailExists",
-      );
-    }
+    const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
 
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const newUser = {
-      id: Date.now().toString(),
-      login,
-      firstName,
-      lastName,
-      email,
+    const user = await createUser({
+      login: normalizedLogin,
+      email: normalizedEmail,
       passwordHash,
+      firstName: isNonEmptyString(firstName) ? firstName.trim() : "",
+      lastName: isNonEmptyString(lastName) ? lastName.trim() : "",
       role: "user",
-      createdAt: new Date().toISOString(),
-    };
-
-    users.push(newUser);
-    writeUsers(users);
-
-    const token = signToken({
-      id: newUser.id,
-      login: newUser.login,
-      email: newUser.email,
-      role: newUser.role,
     });
 
-    log.info("User registered successfully", {
+    log.info("User registered", {
       requestId: req.requestId,
-      userId: newUser.id,
-      login: newUser.login,
-      email: newUser.email,
-      role: newUser.role,
+      userId: user.id,
+      login: user.login,
     });
 
-    return res.json({
-      success: true,
-      token,
-      user: {
-        id: newUser.id,
-        login: newUser.login,
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
-        email: newUser.email,
-        role: newUser.role,
-      },
-    });
+    return res.status(201).json(createAuthResponse(user));
   } catch (error) {
-    if (!(error instanceof AppError)) {
-      log.error("User registration failed with exception", {
-        requestId: req.requestId,
-        login: req.body?.login,
-        email: req.body?.email,
-        errorMessage: error.message,
-      });
+    if (error.code === "23505") {
+      return next(
+        new AppError(
+          "Користувач з таким логіном або email вже існує.",
+          409,
+          {},
+          "auth.userAlreadyExists",
+        ),
+      );
     }
 
     return next(error);
   }
 });
-
-/**
- * @openapi
- * /api/auth/login:
- *   post:
- *     tags:
- *       - Auth
- *     summary: Вхід користувача в систему
- *     description: Перевіряє логін або email та пароль, після чого повертає JWT-токен і дані користувача.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/LoginRequest'
- *           examples:
- *             default:
- *               value:
- *                 login: user123
- *                 password: Passw0rd123
- *     responses:
- *       "200":
- *         description: Успішна авторизація
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthSuccessResponse'
- *             examples:
- *               success:
- *                 value:
- *                   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *                   user:
- *                     id: "1740000000000"
- *                     login: user123
- *                     firstName: Dmytro
- *                     lastName: Medvid
- *                     email: user@mail.com
- *                     role: user
- *       "400":
- *         description: Не передано логін або пароль
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missingData:
- *                 value:
- *                   message: Будь ласка, введіть логін і пароль.
- *       "401":
- *         description: Невірний логін або пароль
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               invalidCredentials:
- *                 value:
- *                   message: Невірний логін або пароль.
- */
 
 /**
  * POST /api/auth/login
  *
- * Авторизує користувача в системі.
- *
- * Алгоритм обробки:
- * 1. Отримує логін або email і пароль із тіла запиту.
- * 2. Перевіряє, що обидва поля заповнені.
- * 3. Завантажує список користувачів із файлового сховища.
- * 4. Шукає користувача спочатку за логіном, потім за email.
- * 5. Перевіряє правильність пароля через bcrypt.
- * 6. Генерує JWT-токен і повертає публічні дані користувача.
- *
- * У разі помилки створює контрольований AppError
- * або передає технічний виняток у централізований error handler.
- *
- * @async
- * @param {Object} req - HTTP-запит Express.
- * @param {Object} req.body - Тіло запиту з обліковими даними.
- * @param {string} req.body.login - Логін або email користувача.
- * @param {string} req.body.password - Пароль користувача.
- * @param {Object} res - HTTP-відповідь Express.
- * @param {Function} next - Функція переходу до наступного middleware.
- * @returns {Promise<Object|void>} JSON-об'єкт із токеном та даними користувача.
+ * Авторизує користувача через PostgreSQL.
  */
 router.post("/login", async (req, res, next) => {
   try {
-    const loginInput = String(req.body.login || "").trim();
-    const password = String(req.body.password || "");
+    const loginOrEmail = req.body.loginOrEmail || req.body.login;
+    const { password } = req.body;
 
-    log.info("User login attempt", {
-      requestId: req.requestId,
-      loginInput,
-    });
-
-    if (!loginInput || !password) {
-      throw new AppError("Будь ласка, введіть логін або email та пароль.", 400, {
-        field: "common",
-        reason: "MISSING_CREDENTIALS",
-      });
+    if (!isNonEmptyString(loginOrEmail)) {
+      throw new AppError(
+        "Вкажіть логін або email.",
+        400,
+        { field: "loginOrEmail" },
+        "auth.loginOrEmailRequired",
+      );
     }
 
-    const users = readUsers();
+    if (!isNonEmptyString(password)) {
+      throw new AppError(
+        "Пароль є обов'язковим.",
+        400,
+        { field: "password" },
+        "auth.passwordRequired",
+      );
+    }
 
-    let user = users.find(
-      (u) => String(u.login || "").trim().toLowerCase() === loginInput.toLowerCase(),
+    const userWithPassword = await findUserByLoginOrEmail(
+      loginOrEmail.trim(),
     );
 
-    if (!user) {
-      const asEmail = normalizeEmail(loginInput);
-      user = users.find((u) => normalizeEmail(u.email) === asEmail);
-    }
-
-    if (!user) {
+    if (!userWithPassword) {
       throw new AppError(
-        "Користувача з такими даними не знайдено або пароль неправильний.",
+        "Невірний логін/email або пароль.",
         401,
-        {
-          field: "login",
-          value: loginInput,
-          reason: "USER_NOT_FOUND",
-        },
+        {},
         "auth.invalidCredentials",
       );
     }
 
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) {
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      userWithPassword.passwordHash,
+    );
+
+    if (!isPasswordValid) {
       throw new AppError(
-        "Користувача з такими даними не знайдено або пароль неправильний.",
+        "Невірний логін/email або пароль.",
         401,
-        {
-          field: "password",
-          reason: "INVALID_PASSWORD",
-        },
+        {},
         "auth.invalidCredentials",
       );
     }
 
-    const token = signToken({
-      id: user.id,
-      login: user.login,
-      email: user.email,
-      role: user.role,
-    });
+    const { passwordHash, ...user } = userWithPassword;
 
-    log.info("User login successful", {
+    log.info("User logged in", {
       requestId: req.requestId,
       userId: user.id,
       login: user.login,
-      email: user.email,
-      role: user.role,
     });
 
-    return res.json({
-      success: true,
-      token,
-      user: {
-        id: user.id,
-        login: user.login,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-      },
-    });
+    return res.json(createAuthResponse(user));
   } catch (error) {
-    if (!(error instanceof AppError)) {
-      log.error("User login failed with exception", {
-        requestId: req.requestId,
-        loginInput: req.body?.login,
-        errorMessage: error.message,
-      });
-    }
-
     return next(error);
   }
 });
 
 /**
- * @openapi
- * /api/auth/me:
- *   get:
- *     tags:
- *       - Auth
- *     summary: Отримання даних поточного користувача
- *     description: Повертає payload користувача з валідного JWT-токена.
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       "200":
- *         description: Дані поточного авторизованого користувача
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/MeResponse'
- *             examples:
- *               success:
- *                 value:
- *                   user:
- *                     id: "1740000000000"
- *                     login: user123
- *                     email: user@mail.com
- *                     role: user
- *                     iat: 1710000000
- *                     exp: 1710600000
- *       "401":
- *         description: Токен відсутній або невалідний
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missingToken:
- *                 value:
- *                   message: No token
- */
-
-/**
  * GET /api/auth/me
  *
- * Повертає дані поточного авторизованого користувача.
- *
- * Маршрут є захищеним і працює тільки після успішного
- * проходження middleware `authMiddleware`, який перевіряє JWT
- * та записує декодовані дані користувача у `req.user`.
- *
- * Додатково логуються дані про запит користувача до профілю.
- *
- * @param {Object} req - HTTP-запит Express.
- * @param {Object} req.user - Дані авторизованого користувача з JWT payload.
- * @param {Object} res - HTTP-відповідь Express.
- * @returns {Object} JSON-об'єкт із даними поточного користувача.
+ * Повертає дані поточного користувача з JWT.
  */
-router.get("/me", authMiddleware, (req, res) => {
-  log.info("Current user profile requested", {
-    requestId: req.requestId,
-    userId: req.user?.id,
-    login: req.user?.login,
-    role: req.user?.role,
-  });
+router.get("/me", async (req, res, next) => {
+  try {
+    const authorization = req.headers.authorization || "";
+    const [, token] = authorization.split(" ");
 
-  return res.json({
-    success: true,
-    user: req.user,
-  });
+    if (!token) {
+      throw new AppError(
+        "Токен авторизації не передано.",
+        401,
+        { reason: "NO_TOKEN" },
+        "auth.noToken",
+      );
+    }
+
+    const user = jwt.verify(token, JWT_SECRET);
+
+    return res.json({
+      user: {
+        id: String(user.id),
+        login: user.login,
+        email: user.email,
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
+      return next(
+        new AppError(
+          "Токен авторизації недійсний або протермінований.",
+          401,
+          {},
+          "auth.invalidToken",
+        ),
+      );
+    }
+
+    return next(error);
+  }
 });
 
 module.exports = router;

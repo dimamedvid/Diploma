@@ -1,108 +1,76 @@
-const { verifyToken } = require("../utils/jwt");
-const { createModuleLogger } = require("../utils/logger");
+const jwt = require("jsonwebtoken");
 const AppError = require("../utils/AppError");
 
-const log = createModuleLogger("auth.middleware");
+const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 
 /**
- * Middleware авторизації для захищених маршрутів API.
+ * Middleware для перевірки JWT авторизації.
  *
- * Модуль містить middleware, який перевіряє наявність і валідність
- * JWT-токена в заголовку `Authorization` запиту.
- * У разі успішної перевірки дані користувача з токена
- * зберігаються у `req.user`.
- */
-
-/**
- * Перевіряє JWT-токен у заголовку Authorization.
+ * Очікує header:
+ * Authorization: Bearer <token>
  *
- * Очікує заголовок у форматі:
- * `Bearer <token>`
+ * Після успішної перевірки додає користувача в req.user.
  *
- * Алгоритм роботи:
- * 1. Зчитує заголовок `Authorization`.
- * 2. Перевіряє, чи має він формат `Bearer <token>`.
- * 3. Викликає `verifyToken()` для декодування і перевірки токена.
- * 4. Якщо токен валідний, записує payload у `req.user`.
- * 5. Додає auth/session context у `req.authContext`.
- * 6. Якщо токен відсутній або недійсний, передає контрольовану помилку далі.
- *
- * @param {Object} req - HTTP-запит Express.
- * @param {Object} req.headers - Заголовки запиту.
- * @param {Object} res - HTTP-відповідь Express.
- * @param {Function} next - Функція переходу до наступного middleware.
+ * @param {Object} req - Express request.
+ * @param {Object} res - Express response.
+ * @param {Function} next - Express next.
  * @returns {void}
  */
 function authMiddleware(req, res, next) {
-  const header = req.headers.authorization || "";
-  const [type, token] = header.split(" ");
-
-  if (type !== "Bearer" || !token) {
-    req.authContext = {
-      sessionType: "anonymous",
-      authType: "none",
-    };
-
-    log.warning("Authorization failed: no token provided", {
-      requestId: req.requestId,
-      method: req.method,
-      url: req.originalUrl,
-      ip: req.ip,
-    });
-
-    return next(
-      new AppError(
-        "Для доступу до цього ресурсу потрібно увійти в систему.",
-        401,
-        { reason: "NO_TOKEN" },
-        "auth.noToken",
-      ),
-    );
-  }
-
   try {
-    const payload = verifyToken(token);
-    req.user = payload;
-    req.authContext = {
-      sessionType: "jwt",
-      authType: "bearer",
-      userId: payload.id,
-      role: payload.role,
-    };
+    const authorization = req.headers.authorization || "";
+    const [scheme, token] = authorization.split(" ");
 
-    log.debug("Token verified successfully", {
-      requestId: req.requestId,
-      method: req.method,
-      url: req.originalUrl,
-      userId: payload.id,
-      role: payload.role,
-      sessionType: "jwt",
-    });
+    if (scheme !== "Bearer" || !token) {
+      return next(
+        new AppError(
+          "Токен авторизації не передано.",
+          401,
+          { reason: "NO_TOKEN" },
+          "auth.noToken",
+        ),
+      );
+    }
+
+    const payload = jwt.verify(token, JWT_SECRET);
+
+    req.user = {
+      id: String(payload.id),
+      login: payload.login,
+      email: payload.email,
+      firstName: payload.firstName || "",
+      lastName: payload.lastName || "",
+      role: payload.role || "user",
+    };
 
     return next();
   } catch (error) {
-    req.authContext = {
-      sessionType: "invalid-jwt",
-      authType: "bearer",
-    };
+    if (error.name === "TokenExpiredError") {
+      return next(
+        new AppError(
+          "Термін дії токена завершився.",
+          401,
+          { reason: "TOKEN_EXPIRED" },
+          "auth.tokenExpired",
+        ),
+      );
+    }
 
-    log.warning("Authorization failed: invalid token", {
-      requestId: req.requestId,
-      method: req.method,
-      url: req.originalUrl,
-      ip: req.ip,
-      errorMessage: error.message,
-    });
+    if (error.name === "JsonWebTokenError") {
+      return next(
+        new AppError(
+          "Некоректний токен авторизації.",
+          401,
+          { reason: "INVALID_TOKEN" },
+          "auth.invalidToken",
+        ),
+      );
+    }
 
-    return next(
-      new AppError(
-        "Сесія недійсна або завершилась. Увійдіть у систему повторно.",
-        401,
-        { reason: "INVALID_TOKEN" },
-        "auth.invalidToken",
-      ),
-    );
+    return next(error);
   }
 }
 
-module.exports = { authMiddleware };
+module.exports = {
+  authMiddleware,
+};
