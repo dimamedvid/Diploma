@@ -5,35 +5,23 @@ import icon from "../../assets/icon.png";
 import "./Header.css";
 
 /**
- * Перевіряє, чи користувач має доступ до сторінок модерації.
- *
- * @param {Object|null} user - Дані поточного користувача.
- * @returns {boolean} true, якщо користувач є адміністратором або модератором.
- */
-function canUserModerate(user) {
-  return user?.role === "admin" || user?.role === "moderator";
-}
-
-/**
  * Верхня панель навігації застосунку.
  *
- * Відображає логотип, основні посилання, кнопки авторизації,
- * кабінет користувача, модерацію та статистику для користувачів
- * з відповідною роллю.
- *
- * @returns {JSX.Element} Header застосунку.
+ * @returns {JSX.Element} Верхня панель навігації.
  */
 export default function Header() {
   const dispatch = useDispatch();
-  const { isLoggedIn, user } = useSelector((state) => state.auth);
-  const canModerate = canUserModerate(user);
+  const { user, token } = useSelector((state) => state.auth);
+
+  const isLoggedIn = Boolean(user && token);
+  const isModerator = ["moderator", "admin"].includes(user?.role);
 
   /**
    * Виконує вихід користувача з акаунту.
    *
    * @returns {void}
    */
-  const onLogout = () => {
+  const handleLogout = () => {
     dispatch(logout());
   };
 
@@ -41,26 +29,42 @@ export default function Header() {
     <header className="header">
       <div className="container header__inner">
         <Link className="header__logo" to="/">
-          <img src={icon} alt="Ukr-Book logo" width="40" height="40" />
+          <img src={icon} alt="Ukr-Book logo" />
           <h1>Ukr-Book</h1>
         </Link>
 
         <nav className="header__nav">
-          <Link className="header__link" to="/">
-            Головна
-          </Link>
-
-          {canModerate && (
-            <>
-              <Link className="header__link" to="/admin">
-                Модерація
+          <ul className="header__items">
+            <li>
+              <Link className="header__link" to="/">
+                Головна
               </Link>
+            </li>
 
-              <Link className="header__link" to="/admin/stats">
-                Статистика
-              </Link>
-            </>
-          )}
+            {isLoggedIn && (
+              <li>
+                <Link className="header__link" to="/works/create">
+                  Додати твір
+                </Link>
+              </li>
+            )}
+
+            {isLoggedIn && isModerator && (
+              <>
+                <li>
+                  <Link className="header__link" to="/admin">
+                    Модерація
+                  </Link>
+                </li>
+
+                <li>
+                  <Link className="header__link" to="/admin/stats">
+                    Статистика
+                  </Link>
+                </li>
+              </>
+            )}
+          </ul>
         </nav>
 
         <div className="header__auth">
@@ -73,21 +77,18 @@ export default function Header() {
               <button
                 className="header__button header__button--outline"
                 type="button"
-                onClick={onLogout}
+                onClick={handleLogout}
               >
                 Вийти
               </button>
             </>
           ) : (
             <>
-              <Link className="header__button" to="/login">
+              <Link className="header__button header__button--outline" to="/login">
                 Увійти
               </Link>
 
-              <Link
-                className="header__button header__button--outline"
-                to="/register"
-              >
+              <Link className="header__button" to="/register">
                 Реєстрація
               </Link>
             </>
