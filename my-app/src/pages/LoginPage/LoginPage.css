@@ -78,3 +78,7 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+.login-page__subtitle {
+  color:#a5a1a1;
+}

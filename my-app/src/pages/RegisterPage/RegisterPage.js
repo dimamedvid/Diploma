@@ -1,285 +1,201 @@
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-import { registerUser, clearAuthError } from "../../store/authSlice";
-import UserErrorMessage from "../../components/UserErrorMessage/UserErrorMessage";
+import { registerUser } from "../../api/authApi";
+import { setCredentials } from "../../store/authSlice";
 import "./RegisterPage.css";
 
 /**
- * Сторінка реєстрації нового користувача.
+ * Сторінка реєстрації користувача.
  *
- * Компонент відображає форму створення облікового запису,
- * виконує клієнтську валідацію полів і після успішної
- * реєстрації перенаправляє користувача на головну сторінку.
+ * Реєстрація виконується через backend PostgreSQL auth.
  *
- * Також компонент працює з глобальним станом авторизації:
- * - отримує статус запиту;
- * - відображає помилки з Redux store;
- * - очищає попередні повідомлення про помилки при зміні полів.
- *
- * @returns {JSX.Element} Сторінка реєстрації з формою створення акаунта.
+ * @returns {JSX.Element} Сторінка реєстрації.
  */
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { status, error } = useSelector((s) => s.auth);
+
+  const [login, setLogin] = useState("");
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordRepeat, setPasswordRepeat] = useState("");
+
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
-   * Локальний стан форми реєстрації.
+   * Реєструє користувача через backend.
    *
-   * Містить значення всіх полів, необхідних для створення облікового запису,
-   * включно з повторним введенням пароля для перевірки збігу.
-   */
-  const [form, setForm] = useState({
-    login: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
-
-  /**
-   * Локальне повідомлення про помилку клієнтської валідації.
-   *
-   * Використовується для відображення помилок ще до надсилання
-   * запиту на сервер, наприклад при незаповнених полях
-   * або невідповідності паролів.
-   */
-  const [localError, setLocalError] = useState("");
-
-  /**
-   * Нормалізує серверну помилку до формату,
-   * який очікує компонент `UserErrorMessage`.
-   */
-  const normalizedServerError =
-    typeof error === "string"
-      ? {
-        success: false,
-        message: error,
-        messageKey: "",
-        errorId: null,
-        requestId: null,
-        details: {},
-      }
-      : error;
-
-  /**
-   * Нормалізує локальну клієнтську помилку валідації.
-   *
-   * Так ми можемо показувати її тим самим компонентом,
-   * що й серверні помилки.
-   */
-  const normalizedLocalError = localError
-    ? {
-      success: false,
-      message: localError,
-      messageKey: "",
-      errorId: null,
-      requestId: null,
-      details: {},
-    }
-    : null;
-
-  /**
-   * Обробляє зміну значень полів форми.
-   *
-   * Під час кожного введення:
-   * - очищає серверну помилку авторизації;
-   * - очищає локальну помилку валідації;
-   * - оновлює відповідне поле у стані форми.
-   *
-   * @param {React.ChangeEvent<HTMLInputElement>} e - Подія зміни поля вводу.
-   * @returns {void}
-   */
-  const onChange = (e) => {
-    dispatch(clearAuthError());
-    setLocalError("");
-
-    const { name, value } = e.target;
-    setForm((prevForm) => ({ ...prevForm, [name]: value }));
-  };
-
-  /**
-   * Виконує клієнтську валідацію форми реєстрації.
-   *
-   * Перевіряє:
-   * - заповнення всіх обов'язкових полів;
-   * - формат логіна;
-   * - довжину імені та прізвища;
-   * - формат email;
-   * - складність пароля;
-   * - збіг пароля і підтвердження пароля.
-   *
-   * @returns {string} Порожній рядок, якщо форма коректна,
-   * або текст повідомлення про помилку.
-   */
-  const validate = () => {
-    if (
-      !form.login ||
-      !form.firstName ||
-      !form.lastName ||
-      !form.email ||
-      !form.password ||
-      !form.confirmPassword
-    ) {
-      return "Будь ласка, заповніть усі обов’язкові поля.";
-    }
-
-    if (!/^[a-zA-Z0-9]{4,25}$/.test(form.login)) {
-      return "Логін: 4–25 символів, латинські літери/цифри.";
-    }
-
-    if (form.firstName.length < 1 || form.firstName.length > 50) {
-      return "Ім’я: 1–50 символів.";
-    }
-
-    if (form.lastName.length < 1 || form.lastName.length > 50) {
-      return "Прізвище: 1–50 символів.";
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      return "Email має бути у форматі name@mail.com.";
-    }
-
-    if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,20}$/.test(form.password)) {
-      return "Пароль: 8–20 символів, мінімум 1 літера і 1 цифра.";
-    }
-
-    if (form.password !== form.confirmPassword) {
-      return "Паролі не співпадають.";
-    }
-
-    return "";
-  };
-
-  /**
-   * Обробляє відправлення форми реєстрації.
-   *
-   * Спочатку виконує клієнтську валідацію. Якщо форма не проходить перевірку,
-   * показує повідомлення про помилку і не надсилає запит на сервер.
-   *
-   * Якщо форма валідна, запускає Redux thunk `registerUser`.
-   * Після успішної реєстрації перенаправляє користувача
-   * на головну сторінку застосунку.
-   *
-   * @async
-   * @param {React.FormEvent<HTMLFormElement>} e - Подія відправлення форми.
+   * @param {React.FormEvent<HTMLFormElement>} event - Submit подія.
    * @returns {Promise<void>}
    */
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-    const validationMessage = validate();
-    if (validationMessage) {
-      setLocalError(validationMessage);
+    if (!login.trim() || !email.trim() || !password.trim()) {
+      setError("Заповніть логін, email і пароль.");
       return;
     }
 
-    const result = await dispatch(
-      registerUser({
-        login: form.login,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        password: form.password,
-      }),
-    );
+    if (password.length < 6) {
+      setError("Пароль має містити щонайменше 6 символів.");
+      return;
+    }
 
-    if (result.type.endsWith("fulfilled")) {
+    if (password !== passwordRepeat) {
+      setError("Паролі не збігаються.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError("");
+
+      const authData = await registerUser({
+        login: login.trim(),
+        email: email.trim(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
+
+      dispatch(setCredentials(authData));
       navigate("/");
+    } catch (registerError) {
+      setError(
+        registerError.message ||
+          "Не вдалося зареєструватися. Перевірте введені дані.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="auth auth--register">
-      <div className="auth__card">
-        <h1 className="auth__title">Реєстрація</h1>
+    <main className="auth register-page">
+      <section className="auth__card register-page__card">
+        <div className="auth__header register-page__header">
+          <h1 className="auth__title register-page__title">Реєстрація</h1>
 
-        <form className="auth__form" onSubmit={onSubmit}>
-          <label className="auth__field">
-            <span className="auth__label">Логін *</span>
+          <p className="auth__subtitle register-page__subtitle">
+            Створіть акаунт, щоб додавати власні твори, оцінювати тексти та
+            зберігати прогрес читання.
+          </p>
+        </div>
+
+        <form
+          className="auth__form register-page__form"
+          onSubmit={handleSubmit}
+        >
+          {error && (
+            <p className="auth__error register-page__error">{error}</p>
+          )}
+
+          <label className="auth__field register-page__field">
+            <span className="auth__label register-page__label">Логін</span>
+
             <input
-              className="auth__input"
-              name="login"
-              value={form.login}
-              onChange={onChange}
-              required
+              className="auth__input register-page__input"
+              type="text"
+              value={login}
+              onChange={(event) => setLogin(event.target.value)}
+              placeholder="Наприклад: user1"
+              disabled={isSubmitting}
             />
           </label>
 
-          <label className="auth__field">
-            <span className="auth__label">Ім’я *</span>
-            <input
-              className="auth__input"
-              name="firstName"
-              value={form.firstName}
-              onChange={onChange}
-              required
-            />
-          </label>
+          <label className="auth__field register-page__field">
+            <span className="auth__label register-page__label">Email</span>
 
-          <label className="auth__field">
-            <span className="auth__label">Прізвище *</span>
             <input
-              className="auth__input"
-              name="lastName"
-              value={form.lastName}
-              onChange={onChange}
-              required
-            />
-          </label>
-
-          <label className="auth__field">
-            <span className="auth__label">Email *</span>
-            <input
-              className="auth__input"
+              className="auth__input register-page__input"
               type="email"
-              name="email"
-              value={form.email}
-              onChange={onChange}
-              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="user1@gmail.com"
+              disabled={isSubmitting}
             />
           </label>
 
-          <label className="auth__field">
-            <span className="auth__label">Пароль *</span>
+          <div className="auth__row register-page__row">
+            <label className="auth__field register-page__field">
+              <span className="auth__label register-page__label">
+                Ім&apos;я
+              </span>
+
+              <input
+                className="auth__input register-page__input"
+                type="text"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                placeholder="Ім'я"
+                disabled={isSubmitting}
+              />
+            </label>
+
+            <label className="auth__field register-page__field">
+              <span className="auth__label register-page__label">
+                Прізвище
+              </span>
+
+              <input
+                className="auth__input register-page__input"
+                type="text"
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+                placeholder="Прізвище"
+                disabled={isSubmitting}
+              />
+            </label>
+          </div>
+
+          <label className="auth__field register-page__field">
+            <span className="auth__label register-page__label">Пароль</span>
+
             <input
-              className="auth__input"
+              className="auth__input register-page__input"
               type="password"
-              name="password"
-              value={form.password}
-              onChange={onChange}
-              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Мінімум 6 символів"
+              disabled={isSubmitting}
             />
           </label>
 
-          <label className="auth__field">
-            <span className="auth__label">Повторіть пароль *</span>
+          <label className="auth__field register-page__field">
+            <span className="auth__label register-page__label">
+              Повторіть пароль
+            </span>
+
             <input
-              className="auth__input"
+              className="auth__input register-page__input"
               type="password"
-              name="confirmPassword"
-              value={form.confirmPassword}
-              onChange={onChange}
-              required
+              value={passwordRepeat}
+              onChange={(event) => setPasswordRepeat(event.target.value)}
+              placeholder="Повторіть пароль"
+              disabled={isSubmitting}
             />
           </label>
 
-          <UserErrorMessage error={normalizedLocalError || normalizedServerError} />
-
-          <button className="auth__button" type="submit" disabled={status === "loading"}>
-            {status === "loading" ? "Реєструю..." : "Зареєструватися"}
+          <button
+            className="auth__button register-page__button"
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Створюємо акаунт..." : "Зареєструватися"}
           </button>
         </form>
 
-        <p className="auth__hint">
-          Вже є акаунт?{" "}
-          <Link className="auth__link" to="/login">
+        <p className="auth__footer register-page__footer">
+          Уже маєте акаунт?{" "}
+          <Link className="auth__link register-page__link" to="/login">
             Увійти
           </Link>
         </p>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

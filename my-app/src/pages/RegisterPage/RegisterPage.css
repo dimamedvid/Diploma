@@ -79,3 +79,7 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+.register-page__subtitle {
+  color:#a5a1a1;
+}
