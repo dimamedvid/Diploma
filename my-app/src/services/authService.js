@@ -1,103 +1,41 @@
-/**
- * Сервіс авторизації для взаємодії з backend API.
- *
- * Модуль містить функції для реєстрації користувача,
- * входу в систему та отримання даних поточного
- * авторизованого користувача.
- */
+import {
+  getCurrentUser,
+  loginUser,
+  registerUser,
+} from "../api/authApi";
 
 /**
- * Базова адреса backend API.
+ * Реєструє нового користувача через backend API.
  *
- * Використовується для формування URL запитів
- * до серверної частини застосунку.
+ * Залишено для сумісності зі старими тестами та імпортами.
  *
- * @constant {string}
+ * @param {Object} userData - Дані користувача.
+ * @returns {Promise<Object>} Дані авторизації.
  */
-const API = "http://localhost:4000/api";
-
-/**
- * Обробляє HTTP-відповідь від API авторизації.
- *
- * Функція перетворює тіло відповіді у JSON і повертає його,
- * якщо запит виконано успішно. Якщо сервер повернув помилку,
- * функція викидає Error з повідомленням із відповіді або
- * стандартним текстом.
- *
- * @async
- * @param {Response} r - Об'єкт HTTP-відповіді fetch.
- * @returns {Promise<Object>} Розібраний JSON-об'єкт відповіді сервера.
- * @throws {Error} Якщо відповідь містить помилку або статус неуспішний.
- */
-async function parse(r) {
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    throw new Error(data.message || "Request failed");
-  }
-  return data;
+export function register(userData) {
+  return registerUser(userData);
 }
 
 /**
- * Реєструє нового користувача в системі.
+ * Авторизує користувача через backend API.
  *
- * Надсилає POST-запит на сервер авторизації з даними користувача
- * та повертає токен доступу разом із публічними даними профілю.
+ * Залишено для сумісності зі старими тестами та імпортами.
  *
- * @async
- * @param {Object} payload - Дані для реєстрації.
- * @param {string} payload.login - Логін користувача.
- * @param {string} payload.firstName - Ім'я користувача.
- * @param {string} payload.lastName - Прізвище користувача.
- * @param {string} payload.email - Email користувача.
- * @param {string} payload.password - Пароль користувача.
- * @returns {Promise<Object>} Об'єкт із токеном та даними користувача.
- * @throws {Error} Якщо реєстрація завершилася помилкою.
+ * @param {Object} credentials - Логін/email і пароль.
+ * @returns {Promise<Object>} Дані авторизації.
  */
-export async function register(payload) {
-  const r = await fetch(`${API}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return parse(r);
+export function login(credentials) {
+  return loginUser(credentials);
 }
 
 /**
- * Виконує вхід користувача в систему.
+ * Отримує поточного користувача за JWT.
  *
- * Надсилає логін і пароль на сервер та отримує токен доступу
- * і дані користувача у випадку успішної авторизації.
+ * Залишено для сумісності зі старими тестами та імпортами.
  *
- * @async
- * @param {Object} payload - Облікові дані користувача.
- * @param {string} payload.login - Логін або email користувача.
- * @param {string} payload.password - Пароль користувача.
- * @returns {Promise<Object>} Об'єкт із токеном та даними користувача.
- * @throws {Error} Якщо логін або пароль некоректні.
+ * @param {string} token - JWT token.
+ * @returns {Promise<Object>} Поточний користувач.
  */
-export async function login(payload) {
-  const r = await fetch(`${API}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return parse(r);
-}
-
-/**
- * Отримує інформацію про поточного авторизованого користувача.
- *
- * Надсилає GET-запит до захищеного маршруту `/auth/me`
- * і використовує Bearer-токен у заголовку Authorization.
- *
- * @async
- * @param {string} token - JWT токен доступу.
- * @returns {Promise<Object>} Об'єкт із даними поточного користувача.
- * @throws {Error} Якщо токен відсутній, прострочений або невалідний.
- */
-export async function me(token) {
-  const r = await fetch(`${API}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return parse(r);
+export function me(token) {
+  return getCurrentUser(token);
 }

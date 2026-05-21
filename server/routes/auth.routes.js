@@ -60,10 +60,10 @@ function createToken(user) {
 }
 
 /**
- * Нормалізує користувача для відповіді frontend.
+ * Створює відповідь авторизації для frontend.
  *
  * @param {Object} user - Користувач.
- * @returns {Object} Дані користувача.
+ * @returns {{ user: Object, token: string }} Дані користувача і JWT.
  */
 function createAuthResponse(user) {
   return {
@@ -243,7 +243,15 @@ router.post("/login", async (req, res, next) => {
       );
     }
 
-    const { passwordHash, ...user } = userWithPassword;
+    const user = {
+      id: userWithPassword.id,
+      login: userWithPassword.login,
+      email: userWithPassword.email,
+      firstName: userWithPassword.firstName,
+      lastName: userWithPassword.lastName,
+      role: userWithPassword.role,
+      createdAt: userWithPassword.createdAt,
+    };
 
     log.info("User logged in", {
       requestId: req.requestId,
@@ -265,9 +273,9 @@ router.post("/login", async (req, res, next) => {
 router.get("/me", async (req, res, next) => {
   try {
     const authorization = req.headers.authorization || "";
-    const [, token] = authorization.split(" ");
+    const [scheme, token] = authorization.split(" ");
 
-    if (!token) {
+    if (scheme !== "Bearer" || !token) {
       throw new AppError(
         "Токен авторизації не передано.",
         401,
@@ -276,20 +284,23 @@ router.get("/me", async (req, res, next) => {
       );
     }
 
-    const user = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET);
 
     return res.json({
       user: {
-        id: String(user.id),
-        login: user.login,
-        email: user.email,
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        role: user.role,
+        id: String(payload.id),
+        login: payload.login,
+        email: payload.email,
+        firstName: payload.firstName || "",
+        lastName: payload.lastName || "",
+        role: payload.role || "user",
       },
     });
   } catch (error) {
-    if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
+    if (
+      error.name === "JsonWebTokenError" ||
+      error.name === "TokenExpiredError"
+    ) {
       return next(
         new AppError(
           "Токен авторизації недійсний або протермінований.",
