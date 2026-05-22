@@ -6,15 +6,16 @@
 
 Документ охоплює:
 
-- стратегію резервного копіювання
-- типи резервних копій
-- частоту створення резервних копій
-- правила зберігання та ротації
-- процедуру резервного копіювання
-- перевірку цілісності резервних копій
-- автоматизацію процесу
-- процедуру повного та вибіркового відновлення
-- тестування відновлення
+- стратегію резервного копіювання;
+- типи резервних копій;
+- частоту створення резервних копій;
+- правила зберігання та ротації;
+- резервне копіювання PostgreSQL;
+- резервне копіювання конфігурацій;
+- резервне копіювання коду проєкту;
+- перевірку цілісності резервних копій;
+- автоматизацію backup-процесу;
+- процедуру відновлення після збою.
 
 ---
 
@@ -22,11 +23,12 @@
 
 У поточній версії проєкту production-середовище складається з таких компонентів:
 
-- **Nginx** як вебсервер і reverse proxy
-- **frontend** як статична production-збірка React
-- **backend** як Node.js / Express-застосунок
-- **systemd** для керування backend-сервісом
-- **JSON-файл** `server/data/users.json` як файлове сховище даних користувачів
+- **Nginx** як вебсервер і reverse proxy;
+- **frontend** як статична production-збірка React;
+- **backend** як Node.js / Express-застосунок;
+- **PostgreSQL** як основне сховище даних;
+- **systemd** для керування backend-сервісом;
+- **.env-файл** для конфігурації backend.
 
 Проєкт розгортається у каталозі:
 
@@ -34,99 +36,136 @@
 /var/www/diploma
 ```
 
-У поточній реалізації окрема СУБД не використовується.  
-Тому основним джерелом даних, яке потрібно резервувати, є файл:
+Основним джерелом даних є база PostgreSQL.
 
-```text
-/var/www/diploma/server/data/users.json
-```
+У базі зберігаються:
 
-Також до резервного копіювання потрібно включати:
+- користувачі;
+- твори;
+- сторінки творів;
+- коментарі;
+- лайки коментарів;
+- обрані твори;
+- прогрес читання;
+- улюблені жанри.
 
-- конфігурацію Nginx
-- unit-файл systemd для backend
-- production-збірку frontend або весь каталог проєкту
-- логи системи, якщо вони потрібні для аудиту та діагностики
+Файлове JSON-сховище користувачів більше не використовується.
 
 ---
 
-## 3. Стратегія резервного копіювання
+## 3. Що потрібно резервувати
+
+До резервного копіювання потрібно включати:
+
+- дамп PostgreSQL;
+- backend `.env`;
+- конфігурацію Nginx;
+- unit-файл systemd;
+- production-збірку frontend або весь каталог проєкту;
+- логи backend і Nginx, якщо вони потрібні для аудиту та діагностики.
+
+Критично важливі дані:
+
+```text
+PostgreSQL database
+server/.env
+/etc/nginx/sites-available/diploma
+/etc/systemd/system/diploma-backend.service
+```
+
+---
+
+## 4. Стратегія резервного копіювання
 
 Для цього проєкту рекомендовано використовувати комбіновану стратегію резервного копіювання:
 
-- **щоденні резервні копії даних користувачів**
-- **регулярні резервні копії конфігурацій**
-- **періодичні повні резервні копії всього проєкту**
-- **обов’язкові резервні копії перед кожним оновленням production-середовища**
+- **щоденні резервні копії PostgreSQL**;
+- **резервні копії конфігурацій після кожної зміни**;
+- **періодичні повні резервні копії всього проєкту**;
+- **обов’язкові резервні копії перед кожним production-оновленням**.
 
 Основна мета резервного копіювання:
 
-- захистити дані користувачів від втрати
-- забезпечити можливість швидкого відновлення після помилки оновлення
-- зберегти робочі конфігурації сервера
-- забезпечити відкат до попереднього стабільного стану
+- захистити дані користувачів і творів від втрати;
+- забезпечити можливість швидкого відновлення після помилки оновлення;
+- зберегти робочі конфігурації сервера;
+- забезпечити відкат до попереднього стабільного стану.
 
 ---
 
-## 4. Типи резервних копій
+## 5. Типи резервних копій
 
-### 4.1. Повна резервна копія
+### 5.1. Резервна копія бази даних
 
-Повна резервна копія містить усі критично важливі компоненти системи:
+Резервна копія PostgreSQL створюється за допомогою `pg_dump`.
 
-- каталог проєкту `/var/www/diploma`
-- файл `users.json`
-- конфігурацію Nginx
-- unit-файл systemd
-- за потреби логи
+Вона містить:
 
-Перевага повної копії полягає в тому, що вона дозволяє швидко відновити всю систему.
+- структуру таблиць;
+- користувачів системи;
+- твори;
+- сторінки творів;
+- коментарі;
+- лайки;
+- обране;
+- прогрес читання;
+- улюблені жанри.
 
-### 4.2. Інкрементальна резервна копія
-
-Інкрементальна копія містить лише зміни з моменту останньої резервної копії.
-
-Для цього проєкту інкрементальний підхід доцільний переважно для:
-
-- логів
-- архівів проєкту
-- великих каталогів у разі подальшого розширення системи
-
-### 4.3. Диференціальна резервна копія
-
-Диференціальна копія містить зміни з моменту останньої повної резервної копії.
-
-У поточному невеликому проєкті диференціальні копії можна застосовувати для:
-
-- резервування каталогу проєкту між повними backup
-- проміжного резервування конфігурацій
-
-### 4.4. Практичне застосування у цьому проєкті
-
-Оскільки проєкт невеликий, рекомендовано використовувати таку модель:
-
-- **щодня** , резервна копія `users.json`
-- **щотижня** , повна резервна копія всього каталогу `/var/www/diploma`
-- **перед кожним production-оновленням** , окрема повна резервна копія даних і конфігурацій
+Це основний тип backup для даних застосунку.
 
 ---
 
-## 5. Частота створення резервних копій
+### 5.2. Резервна копія конфігурацій
+
+До конфігурацій належать:
+
+- `.env` backend;
+- конфігурація Nginx;
+- systemd unit-файл backend.
+
+Такі файли потрібно копіювати після кожної зміни, бо без них застосунок може не запуститися навіть за наявності коду і бази даних.
+
+---
+
+### 5.3. Повна резервна копія проєкту
+
+Повна резервна копія містить увесь каталог проєкту:
+
+```text
+/var/www/diploma
+```
+
+Вона корисна для швидкого відновлення коду, frontend build, backend-файлів і допоміжних скриптів.
+
+---
+
+### 5.4. Резервна копія логів
+
+Логи не завжди є критичними для відновлення, але можуть бути корисні для:
+
+- аналізу помилок;
+- аудиту;
+- перевірки причин збою;
+- діагностики після невдалого оновлення.
+
+---
+
+## 6. Частота створення резервних копій
 
 Рекомендована частота:
 
-- **щодня** , резервна копія `users.json`
-- **щотижня** , повний backup проєкту
-- **перед кожним оновленням** , позаплановий backup
-- **щомісяця** , архівна контрольна копія, яку зберігають довше за звичайні
+- **щодня** — backup PostgreSQL;
+- **перед кожним оновленням** — backup PostgreSQL, `.env`, Nginx і systemd;
+- **щотижня** — повний backup каталогу проєкту;
+- **щомісяця** — архівна контрольна копія, яку зберігають довше за звичайні.
 
-Якщо частота змін у даних зросте, щоденний backup `users.json` можна замінити на резервування кожні 6 або 12 годин.
+Якщо у системі активно додаються твори та коментарі, backup PostgreSQL можна виконувати кожні 6 або 12 годин.
 
 ---
 
-## 6. Зберігання та ротація копій
+## 7. Зберігання та ротація копій
 
-### 6.1. Каталог зберігання
+### 7.1. Каталог зберігання
 
 Рекомендовано зберігати резервні копії у каталозі:
 
@@ -134,51 +173,35 @@
 /var/backups/diploma
 ```
 
-### 6.2. Правила зберігання
-
-У каталозі резервних копій бажано виділити окремі підкаталоги:
+### 7.2. Структура каталогів
 
 ```text
-/var/backups/diploma/data
+/var/backups/diploma/db
 /var/backups/diploma/config
 /var/backups/diploma/project
 /var/backups/diploma/logs
 ```
 
-### 6.3. Ротація
+### 7.3. Правила зберігання
 
 Рекомендована схема ротації:
 
-- щоденні копії зберігати **7 днів**
-- щотижневі копії зберігати **4 тижні**
-- щомісячні копії зберігати **3–6 місяців**
-
-Приклад логіки:
-
-- останні 7 щоденних backup
-- останні 4 щотижневі backup
-- останні 3 щомісячні backup
-
-### 6.4. Додаткові рекомендації
-
-Для підвищення надійності бажано:
-
-- зберігати принаймні одну копію поза основним сервером
-- не зберігати єдиний backup на тому ж диску, де працює production
-- обмежити доступ до резервних копій тільки адміністраторам
+- щоденні backup-и бази даних зберігати **7 днів**;
+- щотижневі повні backup-и проєкту зберігати **4 тижні**;
+- щомісячні архівні копії зберігати **3–6 місяців**;
+- backup-и перед оновленнями зберігати щонайменше до наступного стабільного релізу.
 
 ---
 
-## 7. Процедура резервного копіювання
-
-## 7.1. Підготовка
+## 8. Підготовка до резервного копіювання
 
 Перед створенням backup потрібно:
 
-1. перевірити наявність місця на диску
-2. переконатися, що каталог `/var/backups/diploma` існує
-3. перевірити права доступу до критичних файлів
-4. визначити, які саме дані треба резервувати у поточний момент
+1. перевірити наявність місця на диску;
+2. переконатися, що каталог `/var/backups/diploma` існує;
+3. перевірити доступ до PostgreSQL;
+4. перевірити наявність `.env`;
+5. визначити, які саме дані потрібно резервувати.
 
 ### Перевірка вільного місця
 
@@ -186,10 +209,10 @@
 df -h
 ```
 
-### Створення каталогу резервних копій
+### Створення каталогів
 
 ```bash
-sudo mkdir -p /var/backups/diploma/data
+sudo mkdir -p /var/backups/diploma/db
 sudo mkdir -p /var/backups/diploma/config
 sudo mkdir -p /var/backups/diploma/project
 sudo mkdir -p /var/backups/diploma/logs
@@ -197,113 +220,129 @@ sudo mkdir -p /var/backups/diploma/logs
 
 ---
 
-## 7.2. Резервне копіювання бази даних / даних
+## 9. Резервне копіювання PostgreSQL
 
-У поточній версії окрема база даних відсутня.  
-Замість неї використовується файлове сховище `users.json`.
+## 9.1. Створення дампу бази даних
 
-### Резервна копія користувацьких даних
-
-```bash
-sudo cp /var/www/diploma/server/data/users.json /var/backups/diploma/data/users.json.bak
-```
-
-Для іменування з часовою позначкою:
+Приклад створення backup PostgreSQL:
 
 ```bash
 TIMESTAMP=$(date +%F-%H-%M-%S)
-sudo cp /var/www/diploma/server/data/users.json /var/backups/diploma/data/users-$TIMESTAMP.json.bak
+
+pg_dump -h localhost -U diploma_user -d diploma_db > /var/backups/diploma/db/diploma_db-$TIMESTAMP.sql
+```
+
+Якщо потрібен стислий backup:
+
+```bash
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+pg_dump -h localhost -U diploma_user -d diploma_db | gzip > /var/backups/diploma/db/diploma_db-$TIMESTAMP.sql.gz
 ```
 
 ---
 
-## 7.3. Резервне копіювання конфігурацій
+## 9.2. Перевірка створеного дампу
 
-### Конфігурація Nginx
+Для звичайного `.sql` файлу:
 
 ```bash
-sudo cp /etc/nginx/sites-available/diploma /var/backups/diploma/config/diploma.nginx.bak
+ls -lh /var/backups/diploma/db
+head -n 20 /var/backups/diploma/db/diploma_db-<timestamp>.sql
 ```
 
-### Unit-файл systemd
+Для `.sql.gz` файлу:
 
 ```bash
-sudo cp /etc/systemd/system/diploma-backend.service /var/backups/diploma/config/diploma-backend.service.bak
+gzip -t /var/backups/diploma/db/diploma_db-<timestamp>.sql.gz
+```
+
+Якщо `gzip -t` не повернув помилку, архів не пошкоджений.
+
+---
+
+## 9.3. Резервна копія перед оновленням
+
+Перед production-оновленням бажано створювати окремий backup з очевидною назвою:
+
+```bash
+pg_dump -h localhost -U diploma_user -d diploma_db > /var/backups/diploma/db/diploma_db_before_update.sql
 ```
 
 ---
 
-## 7.4. Резервне копіювання всього проєкту
+## 10. Резервне копіювання конфігурацій
+
+## 10.1. Backend `.env`
+
+```bash
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+sudo cp /var/www/diploma/server/.env /var/backups/diploma/config/server.env-$TIMESTAMP.bak
+```
+
+## 10.2. Конфігурація Nginx
+
+```bash
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+sudo cp /etc/nginx/sites-available/diploma /var/backups/diploma/config/diploma.nginx-$TIMESTAMP.bak
+```
+
+## 10.3. Unit-файл systemd
+
+```bash
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+sudo cp /etc/systemd/system/diploma-backend.service /var/backups/diploma/config/diploma-backend-$TIMESTAMP.service.bak
+```
+
+---
+
+## 11. Повна резервна копія каталогу проєкту
 
 Повна копія каталогу проєкту:
 
 ```bash
 TIMESTAMP=$(date +%F-%H-%M-%S)
+
 sudo tar -czf /var/backups/diploma/project/diploma-project-$TIMESTAMP.tar.gz /var/www/diploma
+```
+
+Перевірка архіву:
+
+```bash
+tar -tzf /var/backups/diploma/project/diploma-project-<timestamp>.tar.gz > /dev/null
 ```
 
 ---
 
-## 7.5. Резервне копіювання логів системи
-
-Для діагностики корисно зберігати частину логів backend і Nginx.
+## 12. Резервне копіювання логів
 
 ### Логи backend через journalctl
 
 ```bash
-sudo journalctl -u diploma-backend -n 500 --no-pager > /var/backups/diploma/logs/diploma-backend.log
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+sudo journalctl -u diploma-backend -n 1000 --no-pager > /var/backups/diploma/logs/diploma-backend-$TIMESTAMP.log
 ```
 
 ### Логи Nginx
 
 ```bash
-sudo cp /var/log/nginx/access.log /var/backups/diploma/logs/nginx-access.log
-sudo cp /var/log/nginx/error.log /var/backups/diploma/logs/nginx-error.log
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+sudo cp /var/log/nginx/access.log /var/backups/diploma/logs/nginx-access-$TIMESTAMP.log
+sudo cp /var/log/nginx/error.log /var/backups/diploma/logs/nginx-error-$TIMESTAMP.log
 ```
 
 ---
 
-## 8. Перевірка цілісності резервних копій
-
-Після створення резервних копій потрібно перевірити:
-
-- чи файл або архів реально створився
-- чи його розмір не дорівнює нулю
-- чи архів можна прочитати
-- чи резервна копія містить очікувані файли
-
-### Перевірка списку резервних копій
-
-```bash
-ls -lh /var/backups/diploma/data
-ls -lh /var/backups/diploma/config
-ls -lh /var/backups/diploma/project
-ls -lh /var/backups/diploma/logs
-```
-
-### Перевірка архіву tar.gz
-
-```bash
-tar -tzf /var/backups/diploma/project/diploma-project-<timestamp>.tar.gz
-```
-
-### Обчислення контрольної суми
-
-```bash
-sha256sum /var/backups/diploma/project/diploma-project-<timestamp>.tar.gz
-```
-
-Контрольну суму бажано зберігати разом із архівом, щоб пізніше перевіряти цілісність.
-
----
-
-## 9. Автоматизація процесу резервного копіювання
+## 13. Автоматизація резервного копіювання
 
 Для автоматизації резервного копіювання доцільно використовувати shell-скрипт і `cron`.
 
-### 9.1. Приклад скрипта резервного копіювання
-
-Нижче наведено приклад скрипта `scripts/backup-prod.sh`:
+### Приклад скрипта `scripts/backup-prod.sh`
 
 ```bash
 #!/bin/bash
@@ -313,20 +352,34 @@ APP_DIR="/var/www/diploma"
 BACKUP_ROOT="/var/backups/diploma"
 TIMESTAMP="$(date +%F-%H-%M-%S)"
 
-DATA_DIR="$BACKUP_ROOT/data"
+DB_NAME="diploma_db"
+DB_USER="diploma_user"
+DB_HOST="localhost"
+
+DB_DIR="$BACKUP_ROOT/db"
 CONFIG_DIR="$BACKUP_ROOT/config"
 PROJECT_DIR="$BACKUP_ROOT/project"
 LOG_DIR="$BACKUP_ROOT/logs"
 
-mkdir -p "$DATA_DIR" "$CONFIG_DIR" "$PROJECT_DIR" "$LOG_DIR"
+mkdir -p "$DB_DIR" "$CONFIG_DIR" "$PROJECT_DIR" "$LOG_DIR"
 
-cp "$APP_DIR/server/data/users.json" "$DATA_DIR/users-$TIMESTAMP.json.bak"
-cp /etc/nginx/sites-available/diploma "$CONFIG_DIR/diploma.nginx-$TIMESTAMP.bak"
-cp /etc/systemd/system/diploma-backend.service "$CONFIG_DIR/diploma-backend-$TIMESTAMP.service.bak"
+pg_dump -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" | gzip > "$DB_DIR/diploma_db-$TIMESTAMP.sql.gz"
+
+if [ -f "$APP_DIR/server/.env" ]; then
+  cp "$APP_DIR/server/.env" "$CONFIG_DIR/server.env-$TIMESTAMP.bak"
+fi
+
+if [ -f /etc/nginx/sites-available/diploma ]; then
+  cp /etc/nginx/sites-available/diploma "$CONFIG_DIR/diploma.nginx-$TIMESTAMP.bak"
+fi
+
+if [ -f /etc/systemd/system/diploma-backend.service ]; then
+  cp /etc/systemd/system/diploma-backend.service "$CONFIG_DIR/diploma-backend-$TIMESTAMP.service.bak"
+fi
 
 tar -czf "$PROJECT_DIR/diploma-project-$TIMESTAMP.tar.gz" "$APP_DIR"
 
-journalctl -u diploma-backend -n 500 --no-pager > "$LOG_DIR/diploma-backend-$TIMESTAMP.log"
+journalctl -u diploma-backend -n 1000 --no-pager > "$LOG_DIR/diploma-backend-$TIMESTAMP.log" || true
 
 if [ -f /var/log/nginx/access.log ]; then
   cp /var/log/nginx/access.log "$LOG_DIR/nginx-access-$TIMESTAMP.log"
@@ -336,7 +389,7 @@ if [ -f /var/log/nginx/error.log ]; then
   cp /var/log/nginx/error.log "$LOG_DIR/nginx-error-$TIMESTAMP.log"
 fi
 
-find "$DATA_DIR" -type f -mtime +7 -delete
+find "$DB_DIR" -type f -mtime +7 -delete
 find "$CONFIG_DIR" -type f -mtime +30 -delete
 find "$PROJECT_DIR" -type f -mtime +30 -delete
 find "$LOG_DIR" -type f -mtime +14 -delete
@@ -344,21 +397,21 @@ find "$LOG_DIR" -type f -mtime +14 -delete
 echo "Backup completed: $TIMESTAMP"
 ```
 
-### 9.2. Права на виконання
+### Права на виконання
 
 ```bash
 chmod +x scripts/backup-prod.sh
 ```
 
-### 9.3. Автоматичний запуск через cron
+### Автоматичний запуск через cron
 
-Приклад щоденного запуску о 02:30:
+Відкрити cron:
 
 ```bash
 crontab -e
 ```
 
-Додати рядок:
+Додати щоденний запуск о 02:30:
 
 ```cron
 30 2 * * * /var/www/diploma/scripts/backup-prod.sh >> /var/log/diploma-backup.log 2>&1
@@ -366,18 +419,101 @@ crontab -e
 
 ---
 
-## 10. Процедура відновлення з резервних копій
+## 14. Перевірка цілісності резервних копій
 
-Відновлення залежить від того, що саме потрібно повернути:
+Після створення резервних копій потрібно перевірити:
 
-- всю систему
-- лише конфігурацію
-- лише користувацькі дані
-- лише окремі логи або архіви
+- чи файл або архів реально створився;
+- чи його розмір не дорівнює нулю;
+- чи backup бази можна прочитати;
+- чи архів проєкту відкривається;
+- чи конфігураційні файли були скопійовані.
+
+### Перевірка списку backup-файлів
+
+```bash
+ls -lh /var/backups/diploma/db
+ls -lh /var/backups/diploma/config
+ls -lh /var/backups/diploma/project
+ls -lh /var/backups/diploma/logs
+```
+
+### Перевірка gzip backup бази
+
+```bash
+gzip -t /var/backups/diploma/db/diploma_db-<timestamp>.sql.gz
+```
+
+### Перевірка архіву проєкту
+
+```bash
+tar -tzf /var/backups/diploma/project/diploma-project-<timestamp>.tar.gz > /dev/null
+```
+
+### Контрольна сума
+
+```bash
+sha256sum /var/backups/diploma/db/diploma_db-<timestamp>.sql.gz
+sha256sum /var/backups/diploma/project/diploma-project-<timestamp>.tar.gz
+```
+
+Контрольні суми бажано зберігати разом із резервними копіями.
 
 ---
 
-## 11. Повне відновлення системи
+## 15. Відновлення PostgreSQL з резервної копії
+
+## 15.1. Підготовка до відновлення
+
+Перед відновленням бажано зупинити backend:
+
+```bash
+sudo systemctl stop diploma-backend
+```
+
+---
+
+## 15.2. Відновлення зі звичайного `.sql`
+
+```bash
+psql -h localhost -U diploma_user -d diploma_db < /var/backups/diploma/db/diploma_db-<timestamp>.sql
+```
+
+---
+
+## 15.3. Відновлення зі стисненого `.sql.gz`
+
+```bash
+gunzip -c /var/backups/diploma/db/diploma_db-<timestamp>.sql.gz | psql -h localhost -U diploma_user -d diploma_db
+```
+
+---
+
+## 15.4. Запуск backend після відновлення
+
+```bash
+sudo systemctl start diploma-backend
+sudo systemctl status diploma-backend
+```
+
+Перевірка API:
+
+```bash
+curl http://127.0.0.1:4000/api/health
+```
+
+Очікувана відповідь:
+
+```json
+{
+  "ok": true,
+  "database": true
+}
+```
+
+---
+
+## 16. Повне відновлення системи
 
 Повне відновлення використовується після критичного збою, пошкодження коду або невдалого оновлення.
 
@@ -388,73 +524,80 @@ sudo systemctl stop diploma-backend
 sudo systemctl stop nginx
 ```
 
-### Крок 2. Відновлення каталогу проєкту з архіву
+### Крок 2. Відновлення каталогу проєкту
 
 ```bash
 sudo rm -rf /var/www/diploma
 sudo tar -xzf /var/backups/diploma/project/diploma-project-<timestamp>.tar.gz -C /
 ```
 
-### Крок 3. Відновлення даних користувачів
+### Крок 3. Відновлення конфігурацій
 
 ```bash
-sudo cp /var/backups/diploma/data/users-<timestamp>.json.bak /var/www/diploma/server/data/users.json
-```
+sudo cp /var/backups/diploma/config/server.env-<timestamp>.bak /var/www/diploma/server/.env
 
-### Крок 4. Відновлення конфігурації Nginx
-
-```bash
 sudo cp /var/backups/diploma/config/diploma.nginx-<timestamp>.bak /etc/nginx/sites-available/diploma
-```
 
-### Крок 5. Відновлення unit-файлу systemd
-
-```bash
 sudo cp /var/backups/diploma/config/diploma-backend-<timestamp>.service.bak /etc/systemd/system/diploma-backend.service
-sudo systemctl daemon-reload
 ```
 
-### Крок 6. Перевірка конфігурації Nginx
+### Крок 4. Відновлення бази даних
 
 ```bash
+gunzip -c /var/backups/diploma/db/diploma_db-<timestamp>.sql.gz | psql -h localhost -U diploma_user -d diploma_db
+```
+
+Або для `.sql`:
+
+```bash
+psql -h localhost -U diploma_user -d diploma_db < /var/backups/diploma/db/diploma_db-<timestamp>.sql
+```
+
+### Крок 5. Оновлення systemd і перевірка Nginx
+
+```bash
+sudo systemctl daemon-reload
 sudo nginx -t
 ```
 
-### Крок 7. Запуск служб
+### Крок 6. Запуск служб
 
 ```bash
 sudo systemctl start nginx
 sudo systemctl start diploma-backend
 ```
 
-### Крок 8. Перевірка системи після відновлення
+### Крок 7. Перевірка системи
 
 ```bash
 sudo systemctl status nginx
 sudo systemctl status diploma-backend
+curl http://127.0.0.1:4000/api/health
 ```
 
 Після цього потрібно вручну перевірити:
 
-- відкриття сайту у браузері
-- авторизацію і реєстрацію
-- доступність API
-- відсутність критичних помилок у логах
+- відкриття сайту у браузері;
+- реєстрацію і логін;
+- створення твору;
+- модерацію;
+- коментарі;
+- обране;
+- прогрес читання;
+- сторінку статистики.
 
 ---
 
-## 12. Вибіркове відновлення даних
+## 17. Вибіркове відновлення
 
-Вибіркове відновлення використовується, коли потрібно повернути лише окрему частину системи.
-
-### 12.1. Відновлення тільки `users.json`
+### 17.1. Відновлення тільки `.env`
 
 ```bash
-sudo cp /var/backups/diploma/data/users-<timestamp>.json.bak /var/www/diploma/server/data/users.json
-sudo chown www-data:www-data /var/www/diploma/server/data/users.json
+sudo cp /var/backups/diploma/config/server.env-<timestamp>.bak /var/www/diploma/server/.env
+sudo systemctl restart diploma-backend
 ```
 
-### 12.2. Відновлення тільки конфігурації Nginx
+### 17.2. Відновлення тільки конфігурації Nginx
 
 ```bash
 sudo cp /var/backups/diploma/config/diploma.nginx-<timestamp>.bak /etc/nginx/sites-available/diploma
@@ -462,7 +605,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 12.3. Відновлення тільки unit-файлу backend
+### 17.3. Відновлення тільки unit-файлу backend
 
 ```bash
 sudo cp /var/backups/diploma/config/diploma-backend-<timestamp>.service.bak /etc/systemd/system/diploma-backend.service
@@ -470,60 +613,75 @@ sudo systemctl daemon-reload
 sudo systemctl restart diploma-backend
 ```
 
+### 17.4. Відновлення тільки бази даних
+
+```bash
+sudo systemctl stop diploma-backend
+
+gunzip -c /var/backups/diploma/db/diploma_db-<timestamp>.sql.gz | psql -h localhost -U diploma_user -d diploma_db
+
+sudo systemctl start diploma-backend
+```
+
 ---
 
-## 13. Тестування відновлення
+## 18. Тестування відновлення
 
-Резервні копії мають сенс лише тоді, коли відновлення реально працює.  
-Тому процедуру restore потрібно регулярно тестувати.
+Резервні копії мають сенс лише тоді, коли відновлення реально працює. Тому процедуру restore потрібно регулярно тестувати.
 
 Рекомендовано:
 
-- перевіряти вибіркове відновлення `users.json` не рідше ніж раз на місяць
-- перевіряти повне відновлення на тестовому сервері не рідше ніж раз на квартал
-- після кожної зміни структури проєкту перевіряти, що backup і restore залишаються актуальними
+- перевіряти відновлення PostgreSQL backup не рідше ніж раз на місяць;
+- перевіряти повне відновлення на тестовому сервері не рідше ніж раз на квартал;
+- після кожної зміни структури БД перевіряти, що backup і restore залишаються актуальними.
 
 ### Мінімальний сценарій тестування
 
-1. створити тестову резервну копію
-2. змінити або пошкодити тестовий файл `users.json`
-3. виконати відновлення з backup
-4. перевірити, що backend читає файл без помилок
-5. перевірити, що реєстрація та авторизація працюють коректно
+1. створити тестову резервну копію PostgreSQL;
+2. створити тестову базу даних;
+3. відновити backup у тестову базу;
+4. перевірити наявність таблиць;
+5. перевірити кількість записів;
+6. запустити backend з тестовою базою;
+7. перевірити `/api/health`.
 
-### Ознаки успішного тесту restore
+### Перевірка таблиць після restore
 
-- потрібний файл або конфігурація успішно відновлені
-- сервіси запускаються без помилок
-- сайт відкривається
-- критичні функції працюють
-- у логах немає нових критичних помилок
+```sql
+\dt
 
----
-
-## 14. Коротка покрокова схема резервного копіювання
-
-1. перевірити вільне місце на диску
-2. створити або перевірити каталог `/var/backups/diploma`
-3. зробити копію `users.json`
-4. зробити копію конфігурації Nginx
-5. зробити копію unit-файлу systemd
-6. створити архів усього каталогу `/var/www/diploma`
-7. зберегти логи backend і Nginx
-8. перевірити наявність і читабельність backup
-9. зберегти контрольні суми архівів
-10. за потреби виконати тестове відновлення
+SELECT COUNT(*) FROM users;
+SELECT COUNT(*) FROM works;
+SELECT COUNT(*) FROM comments;
+```
 
 ---
 
-## 15. Ознаки правильно організованого backup-процесу
+## 19. Коротка покрокова схема резервного копіювання
+
+1. перевірити вільне місце на диску;
+2. створити або перевірити каталог `/var/backups/diploma`;
+3. зробити backup PostgreSQL через `pg_dump`;
+4. зробити копію `.env`;
+5. зробити копію конфігурації Nginx;
+6. зробити копію unit-файлу systemd;
+7. створити архів усього каталогу `/var/www/diploma`;
+8. зберегти логи backend і Nginx;
+9. перевірити наявність і читабельність backup;
+10. зберегти контрольні суми архівів;
+11. за потреби виконати тестове відновлення.
+
+---
+
+## 20. Ознаки правильно організованого backup-процесу
 
 Процес резервного копіювання організований правильно, якщо:
 
-- резервні копії створюються регулярно
-- вони містять усі критичні дані і конфігурації
-- копії проходять перевірку цілісності
-- існує хоча б одна копія поза production-каталогом
-- діє політика ротації
-- restore-процедура перевіряється на практиці
-- після відновлення система повертається до працездатного стану
+- backup-и створюються регулярно;
+- backup-и містять PostgreSQL-дані, конфігурації та код;
+- копії проходять перевірку цілісності;
+- існує хоча б одна копія поза production-каталогом;
+- діє політика ротації;
+- restore-процедура перевіряється на практиці;
+- після відновлення система повертається до працездатного стану;
+- `/api/health` після restore повертає `database: true`.
