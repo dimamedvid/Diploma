@@ -8,6 +8,7 @@ const authRoutes = require("./routes/auth.routes");
 const workRoutes = require("./routes/work.routes");
 const commentRoutes = require("./routes/comment.routes");
 const userActivityRoutes = require("./routes/userActivity.routes");
+const adminStatsRoutes = require("./routes/adminStats.routes");
 const swaggerSpec = require("./docs/swagger");
 const requestContext = require("./middlewares/requestContext");
 const requestLogger = require("./middlewares/requestLogger");
@@ -33,6 +34,8 @@ app.use("/api/works", workRoutes);
 app.use("/api/comments", commentRoutes);
 
 app.use("/api/me", userActivityRoutes);
+
+app.use("/api/admin", adminStatsRoutes);
 
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 

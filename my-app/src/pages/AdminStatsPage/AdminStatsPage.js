@@ -1,210 +1,202 @@
-import { useMemo } from "react";
-import worksData from "../../data/works.json";
-import {
-  enrichWorksWithRating,
-  getAllPublishedWorks,
-} from "../../utils/worksStorage";
-import { getAllCommentsByWork } from "../../utils/commentsStorage";
-import {
-  getAllSubmittedWorks,
-  getApprovedWorks,
-  getPendingWorks,
-  getRejectedWorks,
-} from "../../utils/moderationStorage";
+import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import { getAdminStats } from "../../api/adminApi";
 import "./AdminStatsPage.css";
 
 /**
- * Рахує загальну кількість коментарів.
+ * Форматує рейтинг для відображення.
  *
- * @param {Object.<string, Array>} commentsByWork - Коментарі, згруповані за ID твору.
- * @returns {number} Загальна кількість коментарів.
+ * @param {number} rating - Рейтинг.
+ * @returns {string} Рейтинг у текстовому форматі.
  */
-function getCommentsCount(commentsByWork) {
-  return Object.values(commentsByWork).reduce(
-    (total, comments) => total + comments.length,
-    0,
-  );
+function formatRating(rating) {
+  const numberRating = Number(rating || 0);
+
+  if (numberRating <= 0) {
+    return "—";
+  }
+
+  return numberRating.toFixed(1);
 }
 
 /**
- * Рахує загальну кількість лайків коментарів.
+ * Повертає підпис статусу твору.
  *
- * @param {Object.<string, Array>} commentsByWork - Коментарі, згруповані за ID твору.
- * @returns {number} Загальна кількість лайків.
+ * @param {string} status - Статус твору.
+ * @returns {string} Підпис статусу.
  */
-function getLikesCount(commentsByWork) {
-  return Object.values(commentsByWork).reduce((total, comments) => {
-    const workLikes = comments.reduce((sum, comment) => {
-      return sum + (comment.likedBy?.length || 0);
-    }, 0);
+function getStatusLabel(status) {
+  const statusMap = {
+    pending: "На модерації",
+    approved: "Опубліковано",
+    rejected: "Відхилено",
+  };
 
-    return total + workLikes;
-  }, 0);
+  return statusMap[status] || "Невідомо";
 }
 
 /**
- * Повертає статистику за жанрами.
+ * Сторінка статистики адміністратора.
  *
- * @param {Object[]} works - Список творів.
- * @returns {Object[]} Статистика жанрів.
- */
-function getGenreStats(works) {
-  const genresMap = works.reduce((result, work) => {
-    const genre = work.genre || "Без жанру";
-
-    return {
-      ...result,
-      [genre]: (result[genre] || 0) + 1,
-    };
-  }, {});
-
-  return Object.entries(genresMap)
-    .map(([genre, count]) => ({
-      genre,
-      count,
-    }))
-    .sort((firstGenre, secondGenre) => secondGenre.count - firstGenre.count);
-}
-
-/**
- * Повертає статистику за авторами.
- *
- * @param {Object[]} works - Список користувацьких творів.
- * @returns {Object[]} Статистика авторів.
- */
-function getAuthorStats(works) {
-  const authorsMap = works.reduce((result, work) => {
-    const author = work.author || "Невідомий автор";
-
-    return {
-      ...result,
-      [author]: (result[author] || 0) + 1,
-    };
-  }, {});
-
-  return Object.entries(authorsMap)
-    .map(([author, count]) => ({
-      author,
-      count,
-    }))
-    .sort((firstAuthor, secondAuthor) => secondAuthor.count - firstAuthor.count);
-}
-
-/**
- * Повертає твори з найвищим рейтингом.
- *
- * @param {Object[]} works - Список творів.
- * @returns {Object[]} Топ творів за рейтингом.
- */
-function getTopRatedWorks(works) {
-  return [...works]
-    .filter((work) => Number(work.rating) > 0)
-    .sort((firstWork, secondWork) => secondWork.rating - firstWork.rating)
-    .slice(0, 5);
-}
-
-/**
- * Сторінка статистики для адміністратора або модератора.
- *
- * Відображає загальну статистику контенту, модерації,
- * коментарів, лайків, жанрів, авторів і рейтингів.
+ * Дані завантажуються з PostgreSQL через backend API.
  *
  * @returns {JSX.Element} Сторінка статистики.
  */
 export default function AdminStatsPage() {
-  const stats = useMemo(() => {
-    const pendingWorks = getPendingWorks();
-    const approvedWorks = getApprovedWorks();
-    const rejectedWorks = getRejectedWorks();
-    const commentsByWork = getAllCommentsByWork();
+  const { token } = useSelector((state) => state.auth);
 
-    const publishedWorks = enrichWorksWithRating(getAllPublishedWorks(worksData));
-    const userSubmittedWorks = getAllSubmittedWorks(
-      pendingWorks,
-      approvedWorks,
-      rejectedWorks,
-    );
+  const [stats, setStats] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    return {
-      baseWorksCount: worksData.length,
-      publishedWorksCount: publishedWorks.length,
-      pendingWorksCount: pendingWorks.length,
-      approvedWorksCount: approvedWorks.length,
-      rejectedWorksCount: rejectedWorks.length,
-      userSubmittedWorksCount: userSubmittedWorks.length,
-      commentsCount: getCommentsCount(commentsByWork),
-      likesCount: getLikesCount(commentsByWork),
-      genreStats: getGenreStats(publishedWorks),
-      authorStats: getAuthorStats(userSubmittedWorks),
-      topRatedWorks: getTopRatedWorks(publishedWorks),
+  useEffect(() => {
+    let isMounted = true;
+
+    /**
+     * Завантажує статистику з backend.
+     *
+     * @returns {Promise<void>}
+     */
+    const loadStats = async () => {
+      if (!token) {
+        setIsLoading(false);
+        setError("Щоб переглянути статистику, потрібно увійти.");
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError("");
+
+        const statsFromApi = await getAdminStats(token);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setStats(statsFromApi);
+      } catch (loadError) {
+        if (!isMounted) {
+          return;
+        }
+
+        setError(
+          loadError.message ||
+            "Не вдалося завантажити статистику. Перевірте backend.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     };
-  }, []);
+
+    loadStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
+  if (isLoading) {
+    return (
+      <section className="admin-stats">
+        <div className="admin-stats__card">
+          <h1 className="admin-stats__title">Статистика</h1>
+          <p className="admin-stats__empty">Завантажуємо статистику...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="admin-stats">
+        <div className="admin-stats__card">
+          <h1 className="admin-stats__title">Статистика</h1>
+          <p className="admin-stats__empty">{error}</p>
+        </div>
+      </section>
+    );
+  }
+
+  const summary = stats?.summary || {};
+
+  const metrics = [
+    {
+      label: "Користувачів",
+      value: summary.usersCount || 0,
+    },
+    {
+      label: "Усього творів",
+      value: summary.worksCount || 0,
+    },
+    {
+      label: "На модерації",
+      value: summary.pendingWorksCount || 0,
+    },
+    {
+      label: "Опубліковано",
+      value: summary.approvedWorksCount || 0,
+    },
+    {
+      label: "Відхилено",
+      value: summary.rejectedWorksCount || 0,
+    },
+    {
+      label: "Коментарів",
+      value: summary.commentsCount || 0,
+    },
+    {
+      label: "Лайків коментарів",
+      value: summary.commentLikesCount || 0,
+    },
+    {
+      label: "Додавань в обране",
+      value: summary.favoriteWorksCount || 0,
+    },
+    {
+      label: "Записів прогресу",
+      value: summary.readingProgressCount || 0,
+    },
+    {
+      label: "Улюблених жанрів",
+      value: summary.favoriteGenresCount || 0,
+    },
+  ];
 
   return (
     <section className="admin-stats">
       <div className="admin-stats__card">
-        <h1 className="admin-stats__title">Статистика системи</h1>
+        <h1 className="admin-stats__title">Статистика</h1>
 
         <p className="admin-stats__subtitle">
-          Панель показує загальну активність у каталозі, стан модерації,
-          кількість коментарів, лайків, популярні жанри та найрейтинговіші твори.
+          Дані рахуються з PostgreSQL: користувачі, твори, модерація,
+          коментарі, лайки, обране, прогрес читання та улюблені жанри.
         </p>
       </div>
 
       <div className="admin-stats__grid">
-        <div className="admin-stats__metric">
-          <span>Усього опублікованих творів</span>
-          <strong>{stats.publishedWorksCount}</strong>
-        </div>
-
-        <div className="admin-stats__metric">
-          <span>Базових творів</span>
-          <strong>{stats.baseWorksCount}</strong>
-        </div>
-
-        <div className="admin-stats__metric">
-          <span>Користувацьких заявок</span>
-          <strong>{stats.userSubmittedWorksCount}</strong>
-        </div>
-
-        <div className="admin-stats__metric">
-          <span>На модерації</span>
-          <strong>{stats.pendingWorksCount}</strong>
-        </div>
-
-        <div className="admin-stats__metric">
-          <span>Підтверджено</span>
-          <strong>{stats.approvedWorksCount}</strong>
-        </div>
-
-        <div className="admin-stats__metric">
-          <span>Відхилено</span>
-          <strong>{stats.rejectedWorksCount}</strong>
-        </div>
-
-        <div className="admin-stats__metric">
-          <span>Коментарів</span>
-          <strong>{stats.commentsCount}</strong>
-        </div>
-
-        <div className="admin-stats__metric">
-          <span>Лайків коментарів</span>
-          <strong>{stats.likesCount}</strong>
-        </div>
+        {metrics.map((metric) => (
+          <article className="admin-stats__metric" key={metric.label}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+          </article>
+        ))}
       </div>
 
       <div className="admin-stats__columns">
         <section className="admin-stats__section">
-          <h2 className="admin-stats__section-title">Популярні жанри</h2>
+          <h2 className="admin-stats__section-title">Статистика за жанрами</h2>
 
-          {stats.genreStats.length === 0 ? (
+          {!stats.genres || stats.genres.length === 0 ? (
             <p className="admin-stats__empty">Жанрів поки немає.</p>
           ) : (
             <div className="admin-stats__list">
-              {stats.genreStats.map((item) => (
-                <div className="admin-stats__row" key={item.genre}>
-                  <span>{item.genre}</span>
-                  <strong>{item.count}</strong>
+              {stats.genres.map((genre) => (
+                <div className="admin-stats__row" key={genre.genre}>
+                  <span>{genre.genre}</span>
+                  <strong>{genre.count}</strong>
                 </div>
               ))}
             </div>
@@ -212,18 +204,21 @@ export default function AdminStatsPage() {
         </section>
 
         <section className="admin-stats__section">
-          <h2 className="admin-stats__section-title">Активні автори</h2>
+          <h2 className="admin-stats__section-title">
+            Автори за кількістю творів
+          </h2>
 
-          {stats.authorStats.length === 0 ? (
-            <p className="admin-stats__empty">
-              Користувацьких творів поки немає.
-            </p>
+          {!stats.authors || stats.authors.length === 0 ? (
+            <p className="admin-stats__empty">Авторів поки немає.</p>
           ) : (
             <div className="admin-stats__list">
-              {stats.authorStats.slice(0, 5).map((item) => (
-                <div className="admin-stats__row" key={item.author}>
-                  <span>{item.author}</span>
-                  <strong>{item.count}</strong>
+              {stats.authors.map((author) => (
+                <div
+                  className="admin-stats__row"
+                  key={`${author.authorId || "unknown"}-${author.author}`}
+                >
+                  <span>{author.author}</span>
+                  <strong>{author.worksCount}</strong>
                 </div>
               ))}
             </div>
@@ -232,27 +227,25 @@ export default function AdminStatsPage() {
       </div>
 
       <section className="admin-stats__section">
-        <h2 className="admin-stats__section-title">Твори з найвищим рейтингом</h2>
+        <h2 className="admin-stats__section-title">Останні твори</h2>
 
-        {stats.topRatedWorks.length === 0 ? (
-          <p className="admin-stats__empty">
-            Рейтингових творів поки немає.
-          </p>
+        {!stats.recentWorks || stats.recentWorks.length === 0 ? (
+          <p className="admin-stats__empty">Творів поки немає.</p>
         ) : (
           <div className="admin-stats__table">
-            {stats.topRatedWorks.map((work) => (
-              <div className="admin-stats__table-row" key={work.id}>
+            {stats.recentWorks.map((work) => (
+              <article className="admin-stats__table-row" key={work.id}>
                 <div>
                   <strong>{work.title}</strong>
                   <span>{work.author}</span>
                 </div>
 
-                <span>{work.genre}</span>
+                <span>{getStatusLabel(work.status)}</span>
 
-                <strong>{Number(work.rating).toFixed(1)} / 5</strong>
+                <span>Рейтинг: {formatRating(work.rating)}</span>
 
-                <span>Оцінок: {work.ratingsCount || 0}</span>
-              </div>
+                <span>Коментарів: {work.commentsCount}</span>
+              </article>
             ))}
           </div>
         )}
