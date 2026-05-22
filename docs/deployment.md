@@ -6,13 +6,15 @@
 
 Інструкція орієнтована на release engineer / DevOps-фахівця та охоплює:
 
-- вимоги до апаратного забезпечення
-- необхідне програмне забезпечення
-- налаштування мережі
-- конфігурацію серверів
-- налаштування сховища даних
-- розгортання коду
-- перевірку працездатності після розгортання
+- вимоги до апаратного забезпечення;
+- необхідне програмне забезпечення;
+- налаштування мережі;
+- конфігурацію frontend, backend і PostgreSQL;
+- розгортання коду;
+- налаштування змінних оточення;
+- запуск backend як systemd-сервісу;
+- налаштування Nginx як reverse proxy;
+- перевірку працездатності після розгортання.
 
 ---
 
@@ -20,20 +22,23 @@
 
 У production-середовищі проєкт доцільно розгортати за такою схемою:
 
-- **Nginx** використовується як вебсервер і reverse proxy
-- **frontend** збирається у production-build та роздається як статичний застосунок
-- **backend** запускається як Node.js / Express-застосунок
-- **systemd** використовується для керування backend-процесом
-- дані користувачів зберігаються у локальному JSON-файлі `server/data/users.json`
+- **Nginx** використовується як вебсервер і reverse proxy;
+- **frontend** збирається у production-build та роздається як статичний застосунок;
+- **backend** запускається як Node.js / Express-застосунок;
+- **PostgreSQL** використовується як основне сховище даних;
+- **systemd** використовується для керування backend-процесом;
+- конфігурація backend зберігається у `.env`.
 
 ### Основні компоненти production-архітектури
 
-- **Web server**: Nginx
-- **Application server**: Node.js + Express
-- **СУБД**: окрема СУБД у поточній версії не використовується
-- **Файлове сховище**: локальна файлова система сервера
-- **Кешування**: не використовується
-- **Інші компоненти**: systemd, npm, Git
+- **Web server**: Nginx;
+- **Application server**: Node.js + Express;
+- **Database**: PostgreSQL;
+- **Process manager**: systemd;
+- **Frontend build**: React production build;
+- **API documentation**: Swagger / OpenAPI;
+- **Кешування**: не використовується;
+- **Контейнеризація**: не використовується у поточній версії.
 
 ---
 
@@ -43,26 +48,26 @@
 
 Рекомендовано використовувати сервер з однією з таких архітектур:
 
-- **x86_64 / amd64**
-- **ARM64**, якщо всі потрібні пакети Node.js та Nginx підтримуються системою
+- **x86_64 / amd64**;
+- **ARM64**, якщо всі потрібні пакети Node.js, PostgreSQL та Nginx підтримуються системою.
 
 ### Мінімальні апаратні вимоги
 
 Для невеликого production-розгортання достатньо:
 
-- **CPU**: 2 vCPU
-- **RAM**: 2 GB
-- **Диск**: 20 GB SSD
-- **Мережа**: стабільне підключення до інтернету з відкритими портами для HTTP/HTTPS
+- **CPU**: 2 vCPU;
+- **RAM**: 2 GB;
+- **Диск**: 20 GB SSD;
+- **Мережа**: стабільне підключення до інтернету з відкритими портами для HTTP/HTTPS.
 
 ### Рекомендовані вимоги
 
 Для стабільнішої роботи та запасу на зростання:
 
-- **CPU**: 2–4 vCPU
-- **RAM**: 4 GB
-- **Диск**: 40 GB SSD
-- **Резерв вільного місця**: не менше 10 GB для логів, збірок та резервних копій
+- **CPU**: 2–4 vCPU;
+- **RAM**: 4 GB;
+- **Диск**: 40 GB SSD;
+- **Резерв вільного місця**: не менше 10 GB для логів, збірок, дампів БД і резервних копій.
 
 ---
 
@@ -70,19 +75,21 @@
 
 Для production-розгортання на сервері потрібно встановити:
 
-- **Ubuntu Server 22.04 LTS** або новішу сумісну версію
-- **Git**
-- **Node.js LTS**
-- **npm**
-- **Nginx**
-- **systemd**
-- за потреби **ufw** для базового керування мережевим доступом
+- **Ubuntu Server 22.04 LTS** або новішу сумісну версію;
+- **Git**;
+- **Node.js LTS**;
+- **npm**;
+- **Nginx**;
+- **PostgreSQL**;
+- **systemd**;
+- за потреби **ufw** для базового керування мережевим доступом.
 
 ### Приклад встановлення необхідного ПЗ
 
 ```bash
 sudo apt update
-sudo apt install -y git nginx curl
+sudo apt install -y git nginx curl postgresql postgresql-contrib
+
 curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
@@ -94,6 +101,7 @@ node -v
 npm -v
 git --version
 nginx -v
+psql --version
 ```
 
 ---
@@ -104,17 +112,19 @@ nginx -v
 
 Для коректної роботи production-середовища потрібно:
 
-- відкрити порт **80** для HTTP
-- відкрити порт **443** для HTTPS
-- не відкривати зовні порт backend, якщо він працює лише через reverse proxy
-- внутрішній backend-сервіс може працювати на `localhost:4000`
+- відкрити порт **80** для HTTP;
+- відкрити порт **443** для HTTPS;
+- не відкривати зовні порт backend, якщо він працює лише через reverse proxy;
+- PostgreSQL бажано не відкривати в інтернет, якщо база працює на тому ж сервері;
+- внутрішній backend-сервіс може працювати на `127.0.0.1:4000`.
 
 ### Рекомендована мережева схема
 
-- Nginx приймає зовнішні HTTP/HTTPS-запити
-- frontend build віддається напряму через Nginx
-- запити до API проксіюються з Nginx на backend
-- backend слухає лише локальний інтерфейс або внутрішній порт сервера
+- Nginx приймає зовнішні HTTP/HTTPS-запити;
+- frontend build віддається напряму через Nginx;
+- запити до `/api/` проксіюються з Nginx на backend;
+- backend працює на локальному порту `4000`;
+- backend підключається до PostgreSQL через локальний host або внутрішню мережу.
 
 ### Приклад базового налаштування UFW
 
@@ -127,9 +137,7 @@ sudo ufw enable
 
 ---
 
-## 6. Конфігурація серверів
-
-## 6.1. Підготовка каталогу проєкту
+## 6. Підготовка каталогу проєкту
 
 Рекомендовано розміщувати застосунок у каталозі:
 
@@ -145,9 +153,7 @@ sudo chown -R $USER:$USER /var/www/diploma
 cd /var/www/diploma
 ```
 
----
-
-## 6.2. Отримання коду з репозиторію
+### Отримання коду з репозиторію
 
 ```bash
 git clone https://github.com/dimamedvid/Diploma.git .
@@ -161,7 +167,7 @@ git pull origin main
 
 ---
 
-## 6.3. Встановлення залежностей
+## 7. Встановлення залежностей
 
 ### Backend
 
@@ -179,7 +185,121 @@ npm install
 
 ---
 
-## 6.4. Збірка frontend
+## 8. Налаштування PostgreSQL
+
+## 8.1. Створення користувача та бази даних
+
+Увійдіть у PostgreSQL:
+
+```bash
+sudo -u postgres psql
+```
+
+Створіть користувача та базу даних:
+
+```sql
+CREATE USER diploma_user WITH PASSWORD 'strong_password_here';
+
+CREATE DATABASE diploma_db OWNER diploma_user;
+
+GRANT ALL PRIVILEGES ON DATABASE diploma_db TO diploma_user;
+```
+
+Вийдіть з `psql`:
+
+```sql
+\q
+```
+
+### Перевірка підключення
+
+```bash
+psql -h localhost -U diploma_user -d diploma_db
+```
+
+---
+
+## 8.2. Створення таблиць
+
+У проєкті використовується SQL-файл:
+
+```text
+server/scripts/reset-auth-and-user-relations.sql
+```
+
+Для створення актуальної структури БД виконайте:
+
+```bash
+cd /var/www/diploma/server
+
+psql -h localhost -U diploma_user -d diploma_db -f scripts/reset-auth-and-user-relations.sql
+```
+
+Після виконання мають бути створені таблиці:
+
+- `users`;
+- `works`;
+- `work_pages`;
+- `comments`;
+- `comment_likes`;
+- `favorite_works`;
+- `reading_progress`;
+- `favorite_genres`.
+
+### Перевірка таблиць
+
+```bash
+psql -h localhost -U diploma_user -d diploma_db
+```
+
+```sql
+\dt
+```
+
+---
+
+## 9. Налаштування backend `.env`
+
+У папці backend потрібно створити файл:
+
+```text
+/var/www/diploma/server/.env
+```
+
+Приклад вмісту:
+
+```env
+NODE_ENV=production
+PORT=4000
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=diploma_db
+DB_USER=diploma_user
+DB_PASSWORD=strong_password_here
+
+JWT_SECRET=replace_this_with_long_random_secret
+JWT_EXPIRES_IN=7d
+
+LOG_LEVEL=info
+```
+
+### Важливі змінні
+
+- `PORT` — порт backend-сервера;
+- `DB_HOST` — host PostgreSQL;
+- `DB_PORT` — порт PostgreSQL;
+- `DB_NAME` — назва бази даних;
+- `DB_USER` — користувач бази даних;
+- `DB_PASSWORD` — пароль користувача бази даних;
+- `JWT_SECRET` — секрет для підпису JWT-токенів;
+- `JWT_EXPIRES_IN` — строк дії JWT-токена.
+
+У production значення `JWT_SECRET` має бути довгим, випадковим і не повинно зберігатися у відкритому репозиторії.
+
+---
+
+## 10. Збірка frontend
 
 У production frontend повинен бути зібраний у статичний build:
 
@@ -194,14 +314,11 @@ npm run build
 /var/www/diploma/my-app/build
 ```
 
----
-
-## 6.5. Запуск backend/diploma/my-app/build
-```
+Саме цей каталог буде роздаватися через Nginx.
 
 ---
 
-## 6.5. Запуск backend як systemd-сервісу
+## 11. Запуск backend як systemd-сервісу
 
 Для production рекомендується запускати backend через `systemd`.
 
@@ -218,7 +335,7 @@ npm run build
 ```ini
 [Unit]
 Description=Diploma Backend Service
-After=network.target
+After=network.target postgresql.service
 
 [Service]
 Type=simple
@@ -232,6 +349,22 @@ Environment=PORT=4000
 
 [Install]
 WantedBy=multi-user.target
+```
+
+### Налаштування прав доступу
+
+Оскільки backend запускається від користувача `www-data`, потрібно надати права на читання проєкту:
+
+```bash
+sudo chown -R www-data:www-data /var/www/diploma/server
+sudo chmod -R 750 /var/www/diploma/server
+```
+
+Якщо frontend build роздається Nginx, також можна надати права для читання frontend build:
+
+```bash
+sudo chown -R www-data:www-data /var/www/diploma/my-app/build
+sudo chmod -R 755 /var/www/diploma/my-app/build
 ```
 
 ### Активація сервісу
@@ -248,9 +381,15 @@ sudo systemctl start diploma-backend
 sudo systemctl status diploma-backend
 ```
 
+### Перегляд логів backend
+
+```bash
+sudo journalctl -u diploma-backend -n 100 --no-pager
+```
+
 ---
 
-## 6.6. Конфігурація Nginx
+## 12. Конфігурація Nginx
 
 Створіть файл конфігурації:
 
@@ -273,8 +412,9 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://127.0.0.1:4000/;
+        proxy_pass http://127.0.0.1:4000/api/;
         proxy_http_version 1.1;
+
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -291,182 +431,296 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-Після цього Nginx буде:
-
-- віддавати frontend як статичний сайт
-- проксіювати API-запити на backend
+Якщо конфігурація з такою назвою вже була активована раніше, символічне посилання повторно створювати не потрібно.
 
 ---
 
-## 7. Налаштування СУБД / сховища даних
+## 13. HTTPS
 
-У поточній версії проєкту окрема система керування базами даних не використовується.
+Для production-середовища бажано підключити HTTPS через Let’s Encrypt.
 
-Замість цього серверна частина працює з файловим JSON-сховищем:
-
-```text
-server/data/users.json
-```
-
-Тому для production потрібно:
-
-- забезпечити наявність каталогу `server/data`
-- забезпечити наявність файлу `users.json`
-- надати backend-процесу права на читання і запис цього файлу
-- врахувати цей файл у процедурі резервного копіювання
-
-### Перевірка наявності сховища
+Приклад встановлення Certbot:
 
 ```bash
-mkdir -p /var/www/diploma/server/data
-touch /var/www/diploma/server/data/users.json
+sudo apt install -y certbot python3-certbot-nginx
 ```
 
-### Початковий вміст файлу
-
-```json
-[]
-```
-
-### Налаштування прав доступу
-
-Якщо backend працює від користувача `www-data`, потрібно надати йому права на запис:
+Отримання сертифіката:
 
 ```bash
-sudo chown -R www-data:www-data /var/www/diploma/server/data
-sudo chmod -R 750 /var/www/diploma/server/data
+sudo certbot --nginx -d your-domain.example
+```
+
+Перевірка автоматичного оновлення:
+
+```bash
+sudo certbot renew --dry-run
 ```
 
 ---
 
-## 8. Розгортання коду у production
+## 14. Перевірка працездатності після розгортання
 
-### Покрокова процедура першого розгортання
-
-1. підготувати сервер і встановити необхідне ПЗ
-2. створити каталог `/var/www/diploma`
-3. склонувати репозиторій
-4. встановити залежності для backend і frontend
-5. виконати `npm run build` для frontend
-6. створити та налаштувати `users.json`
-7. створити `systemd`-сервіс для backend
-8. створити конфігурацію Nginx
-9. запустити backend
-10. перевірити конфігурацію Nginx і перезапустити його
-11. виконати перевірку працездатності
-
-### Мінімальний набір команд для першого розгортання
-
-```bash
-sudo mkdir -p /var/www/diploma
-sudo chown -R $USER:$USER /var/www/diploma
-cd /var/www/diploma
-
-git clone https://github.com/dimamedvid/Diploma.git .
-
-cd server
-npm install
-
-mkdir -p data
-touch data/users.json
-
-cd ../my-app
-npm install
-npm run build
-```
-
-Після цього потрібно окремо налаштувати `systemd` та `nginx`.
-
----
-
-## 9. Перевірка працездатності
-
-Після завершення розгортання потрібно перевірити, що всі компоненти працюють коректно.
-
-### 9.1. Перевірка backend-сервісу
+## 14.1. Перевірка backend-сервісу
 
 ```bash
 sudo systemctl status diploma-backend
 ```
 
-Сервіс повинен мати статус `active (running)`.
+Сервіс повинен мати статус:
 
-### 9.2. Перевірка доступності backend локально
-
-```bash
-curl http://127.0.0.1:4000
+```text
+active (running)
 ```
-
-Якщо кореневий маршрут не використовується, можна перевірити один із наявних API-маршрутів, наприклад маршрут авторизації або документації API, якщо вона ввімкнена.
 
 ---
 
-### 9.3. Перевірка Nginx
+## 14.2. Перевірка PostgreSQL
 
 ```bash
-sudo nginx -t
-sudo systemctl status nginx
+sudo systemctl status postgresql
 ```
 
-Nginx повинен пройти перевірку конфігурації без помилок і мати статус `active (running)`.
+Також можна перевірити підключення до бази:
 
-### 9.4. Перевірка frontend у браузері
+```bash
+psql -h localhost -U diploma_user -d diploma_db
+```
+
+---
+
+## 14.3. Перевірка backend локально
+
+```bash
+curl http://127.0.0.1:4000/api/health
+```
+
+Очікувана відповідь:
+
+```json
+{
+  "ok": true,
+  "database": true
+}
+```
+
+Якщо `database` має значення `false`, потрібно перевірити `.env`, доступність PostgreSQL та правильність даних підключення.
+
+---
+
+## 14.4. Перевірка API через Nginx
+
+```bash
+curl http://your-domain.example/api/health
+```
+
+Очікувана відповідь:
+
+```json
+{
+  "ok": true,
+  "database": true
+}
+```
+
+---
+
+## 14.5. Перевірка frontend у браузері
 
 Потрібно відкрити домен або IP-адресу сервера в браузері та перевірити:
 
-- завантаження головної сторінки
-- коректне відображення списку творів
-- роботу маршрутизації між сторінками
-- відкриття сторінок входу та реєстрації
+- завантаження головної сторінки;
+- коректне відображення списку творів;
+- роботу маршрутизації між сторінками;
+- відкриття сторінок входу та реєстрації;
+- відсутність помилок у браузерній консолі.
 
-### 9.5. Перевірка взаємодії frontend і backend
+---
+
+## 14.6. Перевірка взаємодії frontend і backend
 
 Потрібно перевірити:
 
-- реєстрацію нового користувача
-- вхід у систему
-- доступ до захищених сторінок
-- відсутність помилок у браузерній консолі
-- відсутність помилок у логах backend
+1. реєстрацію нового користувача;
+2. вхід у систему;
+3. створення нового твору;
+4. появу твору у статусі `pending`;
+5. доступ до сторінки модерації для користувача з роллю `moderator` або `admin`;
+6. підтвердження або відхилення твору;
+7. появу підтвердженого твору на головній сторінці;
+8. додавання коментаря;
+9. додавання твору в обране;
+10. збереження прогресу читання;
+11. вибір улюблених жанрів;
+12. відкриття сторінки статистики.
 
-### 9.6. Перевірка логів
+---
+
+## 14.7. Перевірка логів
+
+Логи backend:
 
 ```bash
 sudo journalctl -u diploma-backend -n 100 --no-pager
-sudo tail -n 100 /var/log/nginx/error.log
 ```
 
-У логах не повинно бути критичних помилок, пов’язаних із запуском сервера, проксіюванням або доступом до `users.json`.
+Логи Nginx:
+
+```bash
+sudo tail -n 100 /var/log/nginx/error.log
+sudo tail -n 100 /var/log/nginx/access.log
+```
+
+У логах не повинно бути критичних помилок, пов’язаних із запуском backend, підключенням до PostgreSQL або проксіюванням API.
 
 ---
 
-## 10. Ознаки успішного production-розгортання
+## 15. Початкове створення модератора
+
+Після реєстрації звичайного користувача роль можна змінити напряму в PostgreSQL.
+
+Увійдіть у базу:
+
+```bash
+psql -h localhost -U diploma_user -d diploma_db
+```
+
+Виконайте:
+
+```sql
+UPDATE users
+SET role = 'moderator'
+WHERE login = 'moderator_login';
+```
+
+Після зміни ролі користувач має вийти з акаунта і увійти знову, тому що роль записується в JWT-токен під час логіну.
+
+Для перевірки:
+
+```sql
+SELECT id, login, email, role
+FROM users
+ORDER BY id DESC;
+```
+
+---
+
+## 16. Оновлення production-версії
+
+Для оновлення вже розгорнутого проєкту потрібно:
+
+1. перейти в каталог проєкту;
+2. отримати останні зміни з Git;
+3. встановити нові залежності;
+4. за потреби виконати SQL-оновлення схеми;
+5. перебудувати frontend;
+6. перезапустити backend;
+7. перевірити працездатність.
+
+### Команди оновлення
+
+```bash
+cd /var/www/diploma
+
+git pull origin main
+
+cd server
+npm install
+
+cd ../my-app
+npm install
+npm run build
+
+sudo systemctl restart diploma-backend
+sudo systemctl reload nginx
+```
+
+### Перевірка після оновлення
+
+```bash
+curl http://127.0.0.1:4000/api/health
+sudo systemctl status diploma-backend
+sudo nginx -t
+```
+
+---
+
+## 17. Резервне копіювання перед оновленням
+
+Перед production-оновленням бажано зробити резервну копію бази даних:
+
+```bash
+pg_dump -h localhost -U diploma_user -d diploma_db > /var/backups/diploma/diploma_db_before_update.sql
+```
+
+Також бажано зберегти `.env` і конфігурацію Nginx:
+
+```bash
+sudo cp /var/www/diploma/server/.env /var/backups/diploma/server.env.bak
+sudo cp /etc/nginx/sites-available/diploma /var/backups/diploma/diploma.nginx.bak
+```
+
+---
+
+## 18. Відновлення з резервної копії бази даних
+
+Якщо потрібно відновити базу з dump-файлу:
+
+```bash
+psql -h localhost -U diploma_user -d diploma_db < /var/backups/diploma/diploma_db_before_update.sql
+```
+
+Перед відновленням бажано зупинити backend:
+
+```bash
+sudo systemctl stop diploma-backend
+```
+
+Після відновлення:
+
+```bash
+sudo systemctl start diploma-backend
+sudo systemctl status diploma-backend
+```
+
+---
+
+## 19. Ознаки успішного production-розгортання
 
 Розгортання вважається успішним, якщо виконуються всі умови:
 
-- Nginx запущений без помилок
-- backend-сервіс працює через `systemd`
-- frontend відкривається у браузері
-- API-запити успішно проходять через reverse proxy
-- реєстрація та авторизація користувачів працюють коректно
-- файл `server/data/users.json` доступний для читання і запису
-- у логах відсутні критичні помилки
+- Nginx запущений без помилок;
+- PostgreSQL запущений і доступний;
+- backend-сервіс працює через `systemd`;
+- frontend відкривається у браузері;
+- API-запити успішно проходять через reverse proxy;
+- `/api/health` повертає `database: true`;
+- реєстрація та авторизація користувачів працюють коректно;
+- створення, модерація та перегляд творів працюють коректно;
+- коментарі, обране, прогрес читання та улюблені жанри зберігаються у PostgreSQL;
+- сторінка статистики отримує дані з backend;
+- у логах відсутні критичні помилки.
 
 ---
 
-## 11. Особливості поточної версії проєкту
+## 20. Особливості поточної версії проєкту
 
-Поточна production-схема є спрощеною, оскільки проєкт:
+Поточна production-схема має такі особливості:
 
-- не використовує окрему СУБД
-- не має окремого кеш-сервісу
-- не використовує контейнеризацію
-- зберігає дані користувачів у локальному JSON-файлі
+- PostgreSQL використовується як основне сховище даних;
+- backend працює через Node.js / Express;
+- frontend розгортається як статичний React build;
+- backend запускається через `systemd`;
+- Nginx використовується для роздачі frontend і проксіювання API;
+- Docker Compose у поточній версії не використовується;
+- автоматичні міграції ще не реалізовані, схема БД створюється SQL-файлом;
+- localStorage використовується тільки на frontend для збереження поточного auth-стану користувача.
 
 У майбутніх версіях доцільно розглянути:
 
-- перехід на PostgreSQL або MySQL
-- винесення конфігурації в `.env`
-- використання PM2 або Docker Compose
-- підключення HTTPS через Let’s Encrypt
-- централізоване логування та моніторинг
+- автоматичні міграції бази даних;
+- Docker Compose для локального і production-розгортання;
+- автоматизований CI/CD pipeline;
+- централізоване логування;
+- моніторинг стану backend, PostgreSQL і Nginx;
+- регулярні автоматичні backup-и PostgreSQL.
