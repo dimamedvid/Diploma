@@ -1,0 +1,12 @@
+2026-05-22 18:40:36 [INFO] [server] API running on http://localhost:4000 {"env":"development"}
+2026-05-22 18:40:40 [INFO] [request] HTTP request started {"requestId":"ca0abf6c-963f-466c-af16-8ebb5ee370d6","method":"GET","url":"/api/works","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-22 18:40:40 [INFO] [work.routes] Published works requested {"requestId":"ca0abf6c-963f-466c-af16-8ebb5ee370d6"}
+2026-05-22 18:40:40 [INFO] [request] HTTP request started {"requestId":"0a75556f-d9f4-456d-afe0-0a95906dcc6e","method":"GET","url":"/api/me/favorite-genres","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-22 18:40:40 [INFO] [request] HTTP request finished {"requestId":"0a75556f-d9f4-456d-afe0-0a95906dcc6e","method":"GET","url":"/api/me/favorite-genres","statusCode":304,"durationMs":42,"sessionType":"anonymous","userId":"2","role":"moderator"}
+2026-05-22 18:40:40 [INFO] [request] HTTP request finished {"requestId":"ca0abf6c-963f-466c-af16-8ebb5ee370d6","method":"GET","url":"/api/works","statusCode":304,"durationMs":50,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-22 18:42:14 [INFO] [request] HTTP request started {"requestId":"7e5b6e23-d5bc-406a-8957-877512354849","method":"GET","url":"/api/works","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-22 18:42:14 [INFO] [work.routes] Published works requested {"requestId":"7e5b6e23-d5bc-406a-8957-877512354849"}
+2026-05-22 18:42:14 [INFO] [request] HTTP request started {"requestId":"5b7bb78e-7b8b-448b-9cf4-beccb3027a75","method":"GET","url":"/api/me/favorite-genres","ip":"::1","sessionType":"anonymous","userId":null,"role":null}
+2026-05-22 18:42:15 [INFO] [request] HTTP request finished {"requestId":"5b7bb78e-7b8b-448b-9cf4-beccb3027a75","method":"GET","url":"/api/me/favorite-genres","statusCode":304,"durationMs":35,"sessionType":"anonymous","userId":"2","role":"moderator"}
+2026-05-22 18:42:15 [INFO] [request] HTTP request finished {"requestId":"7e5b6e23-d5bc-406a-8957-877512354849","method":"GET","url":"/api/works","statusCode":304,"durationMs":39,"sessionType":"anonymous","userId":null,"role":null}
+2026-05-22 19:08:33 [INFO] [server] Shutdown signal received {"signal":"SIGINT"}

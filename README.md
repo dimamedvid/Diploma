@@ -474,16 +474,6 @@ npx cucumber-js
 
 ---
 
-## Перевірка старих згадок
-
-Для перевірки, що в коді не залишилося старих JSON/localStorage helper-ів:
-
-```powershell
-Get-ChildItem my-app/src,server,docs -Recurse -File | Select-String "users.json|fileDb|authService|works.json|commentsStorage|moderationStorage|favoritesStorage|readingProgressStorage|окрема СУБД не використовується|файлове сховище"
-```
-
----
-
 ## Smoke-test
 
 Після великих змін бажано пройти повний сценарій:
