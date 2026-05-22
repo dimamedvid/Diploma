@@ -56,7 +56,7 @@ export function getUserId(user) {
 /**
  * Повертає всі опубліковані твори.
  *
- * @param {Object[]} baseWorks - Початкові твори з works.json.
+ * @param {Object[]} baseWorks - Початковий список творів.
  * @returns {Object[]} Список базових і підтверджених користувацьких творів.
  */
 export function getAllPublishedWorks(baseWorks) {
