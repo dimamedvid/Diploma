@@ -2,11 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import FiltersBar from "../../components/FiltersBar/FiltersBar";
 import WorksGrid from "../../components/WorksGrid/WorksGrid";
-import worksData from "../../data/works.json";
-import {
-  enrichWorksWithRating,
-  getAllPublishedWorks,
-} from "../../utils/worksStorage";
 import {
   getAvailableGenres,
   getFavoriteGenresForUser,
@@ -91,17 +86,6 @@ function sortWorks(works, sortOption, favoriteGenres) {
 }
 
 /**
- * Повертає локальні твори як fallback, якщо backend недоступний.
- *
- * @returns {Object[]} Список локальних творів.
- */
-function getLocalFallbackWorks() {
-  const publishedWorks = getAllPublishedWorks(worksData);
-
-  return enrichWorksWithRating(publishedWorks);
-}
-
-/**
  * Головна сторінка каталогу творів.
  *
  * @returns {JSX.Element} Головна сторінка з каталогом творів.
@@ -115,7 +99,7 @@ export default function HomePage() {
   const [ratingMax, setRatingMax] = useState("5");
   const [sortOption, setSortOption] = useState("recommended");
 
-  const [allWorks, setAllWorks] = useState(() => getLocalFallbackWorks());
+  const [allWorks, setAllWorks] = useState([]);
   const [favoriteGenres, setFavoriteGenres] = useState(() =>
     getFavoriteGenresForUser(user),
   );
@@ -127,16 +111,10 @@ export default function HomePage() {
   useEffect(() => {
     let isMounted = true;
 
-    /**
-     * Завантажує твори з backend.
-     *
-     * Якщо backend недоступний, залишає локальні дані.
-     *
-     * @returns {Promise<void>}
-     */
     const loadWorks = async () => {
       try {
         setIsLoading(true);
+        setApiError("");
 
         const worksFromApi = await getWorks();
 
@@ -145,15 +123,14 @@ export default function HomePage() {
         }
 
         setAllWorks(worksFromApi);
-        setApiError("");
       } catch (error) {
         if (!isMounted) {
           return;
         }
 
-        setAllWorks(getLocalFallbackWorks());
+        setAllWorks([]);
         setApiError(
-          "Backend зараз недоступний, тому показуються локальні дані.",
+          "Backend зараз недоступний. Запустіть сервер, щоб завантажити твори з PostgreSQL.",
         );
       } finally {
         if (isMounted) {
@@ -172,14 +149,6 @@ export default function HomePage() {
   useEffect(() => {
     let isMounted = true;
 
-    /**
-     * Завантажує улюблені жанри користувача з backend.
-     *
-     * Якщо користувач не авторизований або backend недоступний,
-     * використовується локальний fallback.
-     *
-     * @returns {Promise<void>}
-     */
     const loadFavoriteGenres = async () => {
       if (!token) {
         setFavoriteGenres(getFavoriteGenresForUser(user));
@@ -201,9 +170,9 @@ export default function HomePage() {
           return;
         }
 
-        setFavoriteGenres(getFavoriteGenresForUser(user));
+        setFavoriteGenres([]);
         setGenresError(
-          "Не вдалося завантажити улюблені жанри з backend, використано локальні дані.",
+          "Не вдалося завантажити улюблені жанри з backend.",
         );
       }
     };
@@ -267,6 +236,7 @@ export default function HomePage() {
           )}
 
           {!isLoading &&
+            !apiError &&
             favoriteGenres.length > 0 &&
             sortOption === "recommended" && (
             <p className="results__hint">
