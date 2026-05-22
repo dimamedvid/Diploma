@@ -6,14 +6,16 @@
 
 Інструкція охоплює:
 
-- підготовку до оновлення
-- створення резервних копій
-- перевірку сумісності
-- планування простою
-- процес оновлення
-- оновлення коду і конфігурації
-- перевірку після оновлення
-- процедуру відкату у разі невдалого оновлення
+- підготовку до оновлення;
+- створення резервних копій;
+- перевірку сумісності;
+- оновлення коду;
+- оновлення залежностей;
+- оновлення схеми PostgreSQL;
+- збірку frontend;
+- перезапуск backend;
+- перевірку після оновлення;
+- процедуру відкату у разі невдалого оновлення.
 
 ---
 
@@ -21,11 +23,12 @@
 
 У поточній версії проєкту production-середовище складається з таких компонентів:
 
-- **Nginx** як вебсервер і reverse proxy
-- **frontend** як статична production-збірка React
-- **backend** як Node.js / Express-застосунок
-- **systemd** для керування backend-сервісом
-- **JSON-файл** `server/data/users.json` як файлове сховище даних користувачів
+- **Nginx** як вебсервер і reverse proxy;
+- **frontend** як статична production-збірка React;
+- **backend** як Node.js / Express-застосунок;
+- **PostgreSQL** як основне сховище даних;
+- **systemd** для керування backend-сервісом;
+- **.env-файл** для конфігурації backend.
 
 Оновлення проєкту виконується на сервері, де застосунок розгорнуто у каталозі:
 
@@ -45,12 +48,13 @@ diploma-backend
 
 Перед початком оновлення потрібно:
 
-1. визначити, яку саме версію або коміт необхідно розгорнути
-2. перевірити, чи немає незавершених робіт на сервері
-3. переконатися, що є доступ до сервера, Git-репозиторію та прав sudo
-4. перевірити наявність вільного місця на диску
-5. перевірити поточний стан сервісів
-6. попередити користувачів про можливий короткочасний простій, якщо це потрібно
+1. визначити, яку саме версію або commit необхідно розгорнути;
+2. перевірити, чи немає незавершених робіт на сервері;
+3. переконатися, що є доступ до сервера, Git-репозиторію та прав sudo;
+4. перевірити наявність вільного місця на диску;
+5. перевірити поточний стан сервісів;
+6. створити backup PostgreSQL і конфігурацій;
+7. попередити користувачів про можливий короткочасний простій, якщо це потрібно.
 
 ### Перевірка вільного місця на диску
 
@@ -63,12 +67,14 @@ df -h
 ```bash
 sudo systemctl status diploma-backend
 sudo systemctl status nginx
+sudo systemctl status postgresql
 ```
 
 ### Перевірка поточної версії коду
 
 ```bash
 cd /var/www/diploma
+
 git status
 git log --oneline -n 5
 ```
@@ -77,371 +83,484 @@ git log --oneline -n 5
 
 ---
 
-## 4. Створення резервних копій
+## 4. Створення резервних копій перед оновленням
 
-Перед будь-яким оновленням обов’язково потрібно створити резервні копії.
+Перед будь-яким production-оновленням обов’язково потрібно створити резервні копії.
 
-У поточній версії проєкту критично важливо зберегти:
+Критично важливо зберегти:
 
-- файл з даними користувачів `server/data/users.json`
-- поточну конфігурацію Nginx, якщо вона редагувалась вручну
-- за потреби повну копію поточної версії проєкту
+- дамп PostgreSQL;
+- backend `.env`;
+- конфігурацію Nginx;
+- systemd unit-файл backend;
+- за потреби архів поточного каталогу проєкту.
 
 ### Створення каталогу для резервних копій
 
 ```bash
-sudo mkdir -p /var/backups/diploma
+sudo mkdir -p /var/backups/diploma/db
+sudo mkdir -p /var/backups/diploma/config
+sudo mkdir -p /var/backups/diploma/project
 ```
 
-### Резервна копія файлу даних
+### Резервна копія PostgreSQL
 
 ```bash
-sudo cp /var/www/diploma/server/data/users.json /var/backups/diploma/users.json.bak
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+pg_dump -h localhost -U diploma_user -d diploma_db > /var/backups/diploma/db/diploma_db_before_update-$TIMESTAMP.sql
+```
+
+Стиснений варіант:
+
+```bash
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+pg_dump -h localhost -U diploma_user -d diploma_db | gzip > /var/backups/diploma/db/diploma_db_before_update-$TIMESTAMP.sql.gz
+```
+
+### Резервна копія `.env`
+
+```bash
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+sudo cp /var/www/diploma/server/.env /var/backups/diploma/config/server.env_before_update-$TIMESTAMP.bak
 ```
 
 ### Резервна копія конфігурації Nginx
 
 ```bash
-sudo cp /etc/nginx/sites-available/diploma /var/backups/diploma/diploma.nginx.bak
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+sudo cp /etc/nginx/sites-available/diploma /var/backups/diploma/config/diploma.nginx_before_update-$TIMESTAMP.bak
 ```
 
-### Резервна копія всього проєкту
+### Резервна копія systemd unit-файлу
 
 ```bash
-sudo tar -czf /var/backups/diploma/diploma-project-backup.tar.gz /var/www/diploma
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+sudo cp /etc/systemd/system/diploma-backend.service /var/backups/diploma/config/diploma-backend_before_update-$TIMESTAMP.service.bak
 ```
 
-Після створення копій потрібно переконатися, що вони реально існують:
+### Повна резервна копія каталогу проєкту
 
 ```bash
-ls -lh /var/backups/diploma
+TIMESTAMP=$(date +%F-%H-%M-%S)
+
+sudo tar -czf /var/backups/diploma/project/diploma-project_before_update-$TIMESTAMP.tar.gz /var/www/diploma
 ```
 
 ---
 
-## 5. Перевірка сумісності
+## 5. Перевірка резервних копій
 
-Перед оновленням потрібно перевірити, чи сумісна нова версія з поточним production-середовищем.
-
-Потрібно перевірити:
-
-- чи не змінилась версія Node.js, потрібна проєкту
-- чи не з’явились нові npm-залежності
-- чи не змінилась структура frontend build
-- чи не змінилась конфігурація backend
-- чи не потрібні зміни у Nginx
-- чи не змінився формат збереження даних у `users.json`
-
-### Перевірка залежностей
+Після створення backup потрібно перевірити, що файли реально створені та не порожні.
 
 ```bash
-cd /var/www/diploma/server
-cat package.json
-
-cd /var/www/diploma/my-app
-cat package.json
+ls -lh /var/backups/diploma/db
+ls -lh /var/backups/diploma/config
+ls -lh /var/backups/diploma/project
 ```
 
-### Перевірка версії Node.js
+Для `.sql.gz` backup:
 
 ```bash
-node -v
-npm -v
+gzip -t /var/backups/diploma/db/diploma_db_before_update-<timestamp>.sql.gz
 ```
 
-### Особливість поточної версії проєкту
+Для архіву проєкту:
 
-У поточній реалізації окрема СУБД не використовується, тому класичні SQL-міграції не потрібні.
+```bash
+tar -tzf /var/backups/diploma/project/diploma-project_before_update-<timestamp>.tar.gz > /dev/null
+```
 
-Але при зміні формату збереження користувачів у `users.json` необхідно окремо перевірити сумісність старих даних з новою версією backend.
+Якщо ці команди не повернули помилок, backup-и можна вважати придатними для відновлення.
 
 ---
 
-## 6. Планування часу простою
+## 6. Отримання останніх змін з Git
 
-Якщо оновлення стосується лише frontend-збірки або не змінює серверну логіку, простій може бути мінімальним.
-
-Короткий простій може знадобитися у таких випадках:
-
-- оновлюється backend-код
-- змінюється конфігурація Nginx
-- змінюється формат файлу `users.json`
-- потрібно перезапустити сервіси
-
-Для невеликого проєкту рекомендовано планувати технічне вікно тривалістю **5–15 хвилин**.
-
-Якщо оновлення виконується у час низького навантаження, ризик впливу на користувачів буде меншим.
-
----
-
-## 7. Процес оновлення
-
-## 7.1. Перехід у каталог проєкту
+Перейдіть у каталог проєкту:
 
 ```bash
 cd /var/www/diploma
 ```
 
----
-
-## 7.2. Завантаження нової версії коду
-
-Перед отриманням нової версії потрібно переконатися, що резервні копії вже створені.
-
-Після цього завантажте зміни з репозиторію:
+Перевірте поточний стан:
 
 ```bash
-git fetch origin
-git checkout main
+git status
+```
+
+Отримайте останні зміни:
+
+```bash
 git pull origin main
 ```
 
-Якщо потрібно розгорнути конкретний тег або коміт:
+Після цього перевірте останні commit-и:
 
 ```bash
-git checkout <tag_or_commit>
+git log --oneline -n 5
 ```
 
 ---
 
-## 7.3. Зупинка потрібних служб
+## 7. Оновлення backend-залежностей
 
-Перед оновленням backend потрібно зупинити відповідний сервіс:
-
-```bash
-sudo systemctl stop diploma-backend
-```
-
-Nginx можна залишити увімкненим, якщо це допустимо, але у момент оновлення backend API може бути тимчасово недоступним.
-
-Якщо виконується зміна конфігурації Nginx, його буде перезапущено пізніше після перевірки конфігурації.
-
----
-
-## 7.4. Оновлення залежностей
-
-### Backend
+Якщо змінився `server/package.json` або `server/package-lock.json`, потрібно оновити залежності backend.
 
 ```bash
 cd /var/www/diploma/server
 npm install
 ```
 
-### Frontend
+Для більш контрольованого production-встановлення можна використовувати:
+
+```bash
+npm ci --omit=dev
+```
+
+Але `npm ci` вимагає актуальний `package-lock.json` і видаляє `node_modules` перед встановленням.
+
+---
+
+## 8. Оновлення frontend-залежностей
+
+Якщо змінився `my-app/package.json` або `my-app/package-lock.json`, потрібно оновити залежності frontend.
 
 ```bash
 cd /var/www/diploma/my-app
 npm install
 ```
 
+Для production-збірки також можна використовувати:
+
+```bash
+npm ci
+```
+
 ---
 
-## 7.5. Розгортання нового коду
+## 9. Оновлення схеми PostgreSQL
 
-Після оновлення залежностей потрібно виконати нову production-збірку frontend:
+Якщо в новій версії змінилася структура БД, потрібно застосувати SQL-оновлення.
+
+У поточній версії проєкту основний SQL-файл для створення актуальної схеми:
+
+```text
+server/scripts/reset-auth-and-user-relations.sql
+```
+
+Цей файл повністю перестворює таблиці і підходить для чистого старту або тестового середовища. У production його не можна запускати без backup, якщо потрібно зберегти дані.
+
+Для production бажано використовувати окремі migration-файли, які змінюють схему без видалення даних.
+
+### Приклад виконання окремого migration-файлу
+
+```bash
+cd /var/www/diploma/server
+
+psql -h localhost -U diploma_user -d diploma_db -f scripts/<migration-file>.sql
+```
+
+### Перевірка таблиць після оновлення
+
+```bash
+psql -h localhost -U diploma_user -d diploma_db
+```
+
+```sql
+\dt
+
+SELECT COUNT(*) FROM users;
+SELECT COUNT(*) FROM works;
+SELECT COUNT(*) FROM comments;
+```
+
+Якщо оновлення схеми не потрібне, цей крок можна пропустити.
+
+---
+
+## 10. Збірка frontend
+
+Після оновлення коду потрібно заново зібрати frontend:
 
 ```bash
 cd /var/www/diploma/my-app
 npm run build
 ```
 
-Backend у поточній версії не потребує окремого build-кроку, оскільки запускається напряму через Node.js.
+Після успішної збірки оновиться каталог:
+
+```text
+/var/www/diploma/my-app/build
+```
+
+Саме цей каталог роздається через Nginx.
 
 ---
 
-## 7.6. Міграція даних
+## 11. Перезапуск backend
 
-У поточній версії проєкту окрема СУБД не використовується, тому стандартні міграції бази даних відсутні.
-
-Однак у разі зміни структури даних у файлі `server/data/users.json` потрібно:
-
-1. перевірити, чи новий backend підтримує старий формат файлу
-2. за потреби підготувати скрипт конвертації
-3. перед конвертацією ще раз створити резервну копію `users.json`
-4. виконати перетворення даних
-5. перевірити коректність читання файлу після оновлення
-
-Якщо формат `users.json` не змінювався, цей крок можна пропустити.
-
----
-
-## 7.7. Оновлення конфігурацій
-
-Якщо нова версія проєкту вимагає змін у конфігурації Nginx або systemd, потрібно:
-
-- оновити відповідний конфігураційний файл
-- перевірити синтаксис конфігурації
-- лише після перевірки застосувати зміни
-
-### Перевірка конфігурації Nginx
+Після оновлення backend-коду або `.env` потрібно перезапустити backend-сервіс:
 
 ```bash
-sudo nginx -t
+sudo systemctl restart diploma-backend
 ```
 
-### Перезавантаження Nginx після успішної перевірки
-
-```bash
-sudo systemctl reload nginx
-```
-
-### Перечитування unit-файлів systemd, якщо змінювався сервіс
-
-```bash
-sudo systemctl daemon-reload
-```
-
----
-
-## 7.8. Запуск служб після оновлення
-
-Після завершення оновлення потрібно знову запустити backend:
-
-```bash
-sudo systemctl start diploma-backend
-```
-
-Для автоматичного запуску після перезавантаження сервера сервіс має бути ввімкнений:
-
-```bash
-sudo systemctl enable diploma-backend
-```
-
----
-
-## 8. Перевірка після оновлення
-
-Після завершення оновлення потрібно перевірити, що система працює коректно.
-
-### Перевірка статусу backend
+Перевірити статус:
 
 ```bash
 sudo systemctl status diploma-backend
 ```
 
-Сервіс повинен мати статус:
-
-```text
-active (running)
-```
-
-### Перевірка Nginx
-
-```bash
-sudo systemctl status nginx
-sudo nginx -t
-```
-
-### Перевірка логів backend
+Переглянути останні логи:
 
 ```bash
 sudo journalctl -u diploma-backend -n 100 --no-pager
 ```
 
-### Перевірка логів Nginx
-
-```bash
-sudo tail -n 100 /var/log/nginx/error.log
-```
-
-### Перевірка frontend у браузері
-
-Після оновлення потрібно відкрити сайт у браузері та перевірити:
-
-- завантаження головної сторінки
-- коректну маршрутизацію
-- роботу сторінок входу та реєстрації
-- відсутність помилок у консолі браузера
-
-### Перевірка backend-функціональності
-
-Потрібно перевірити:
-
-- реєстрацію користувача
-- авторизацію користувача
-- доступ до захищених маршрутів
-- коректну роботу API через Nginx reverse proxy
-
-### Перевірка файлу даних
-
-Потрібно переконатися, що після оновлення:
-
-- файл `server/data/users.json` існує
-- backend має до нього доступ
-- нові дані можуть записуватись без помилок
-
 ---
 
-## 9. Коротка покрокова процедура оновлення
+## 12. Перезавантаження Nginx
 
-Нижче наведено скорочений порядок оновлення:
-
-1. перевірити стан сервера і сервісів
-2. створити резервні копії `users.json`, конфігурації Nginx і каталогу проєкту
-3. перевірити сумісність нової версії з поточним середовищем
-4. попередити користувачів про короткий простій, якщо це необхідно
-5. виконати `git fetch` і `git pull`
-6. зупинити backend-сервіс
-7. оновити залежності через `npm install`
-8. виконати `npm run build` для frontend
-9. за потреби оновити конфігурації
-10. перевірити `nginx -t`
-11. запустити backend-сервіс
-12. перевірити сайт, API і логи
-
----
-
-## 10. Процедура відкату (rollback)
-
-Якщо після оновлення з’явилися критичні помилки, потрібно виконати відкат до попередньої стабільної версії.
-
-### Причини для rollback
-
-Відкат потрібен, якщо:
-
-- backend не запускається
-- frontend не відкривається або працює некоректно
-- Nginx не проходить перевірку конфігурації
-- авторизація або реєстрація перестали працювати
-- нова версія пошкодила або некоректно обробляє `users.json`
-
-### Крок 1. Зупинка backend
+Якщо змінювалася конфігурація Nginx, потрібно перевірити її та перезавантажити сервіс:
 
 ```bash
-sudo systemctl stop diploma-backend
-```
-
-### Крок 2. Повернення до попередньої версії коду
-
-Якщо відомий стабільний коміт:
-
-```bash
-cd /var/www/diploma
-git checkout <previous_stable_commit>
-```
-
-Або, якщо потрібно відкотити останнє оновлення гілки:
-
-```bash
-git log --oneline -n 10
-git checkout <previous_commit>
-```
-
-### Крок 3. Відновлення резервної копії файлу даних
-
-```bash
-sudo cp /var/backups/diploma/users.json.bak /var/www/diploma/server/data/users.json
-```
-
-### Крок 4. Відновлення конфігурації Nginx, якщо вона змінювалась
-
-```bash
-sudo cp /var/backups/diploma/diploma.nginx.bak /etc/nginx/sites-available/diploma
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### Крок 5. Повторне встановлення залежностей
+Якщо конфігурація Nginx не змінювалася, достатньо оновити frontend build і перезапустити backend.
+
+---
+
+## 13. Перевірка після оновлення
+
+## 13.1. Перевірка backend health endpoint
+
+```bash
+curl http://127.0.0.1:4000/api/health
+```
+
+Очікувана відповідь:
+
+```json
+{
+  "ok": true,
+  "database": true
+}
+```
+
+Якщо `database` має значення `false`, потрібно перевірити:
+
+- чи працює PostgreSQL;
+- чи правильні значення в `.env`;
+- чи існує база даних;
+- чи має користувач БД потрібні права;
+- чи застосовані потрібні SQL-оновлення.
+
+---
+
+## 13.2. Перевірка API через Nginx
+
+```bash
+curl http://your-domain.example/api/health
+```
+
+Очікувана відповідь:
+
+```json
+{
+  "ok": true,
+  "database": true
+}
+```
+
+---
+
+## 13.3. Перевірка frontend
+
+У браузері потрібно перевірити:
+
+- головну сторінку;
+- сторінки логіну та реєстрації;
+- особистий кабінет;
+- сторінку створення твору;
+- сторінку модерації;
+- сторінку статистики;
+- сторінку окремого твору.
+
+---
+
+## 13.4. Повний smoke-test
+
+Після оновлення бажано пройти мінімальний сценарій:
+
+1. зареєструвати нового користувача;
+2. увійти в систему;
+3. створити новий твір;
+4. перевірити, що твір отримав статус `pending`;
+5. увійти як модератор або адміністратор;
+6. підтвердити твір;
+7. перевірити, що твір з’явився на головній сторінці;
+8. залишити коментар і оцінку;
+9. додати твір в обране;
+10. змінити сторінку читання і перевірити прогрес;
+11. вибрати улюблені жанри;
+12. відкрити сторінку статистики.
+
+---
+
+## 14. Перевірка логів після оновлення
+
+Backend:
+
+```bash
+sudo journalctl -u diploma-backend -n 200 --no-pager
+```
+
+Nginx:
+
+```bash
+sudo tail -n 100 /var/log/nginx/error.log
+sudo tail -n 100 /var/log/nginx/access.log
+```
+
+PostgreSQL:
+
+```bash
+sudo journalctl -u postgresql -n 100 --no-pager
+```
+
+У логах не повинно бути критичних помилок, пов’язаних із:
+
+- запуском backend;
+- підключенням до PostgreSQL;
+- виконанням SQL-запитів;
+- проксіюванням API;
+- віддачею frontend build.
+
+---
+
+## 15. Типові проблеми після оновлення
+
+### Backend не запускається
+
+Перевірити:
+
+```bash
+sudo systemctl status diploma-backend
+sudo journalctl -u diploma-backend -n 100 --no-pager
+```
+
+Можливі причини:
+
+- помилка у `.env`;
+- відсутня залежність після оновлення;
+- синтаксична помилка в коді;
+- неправильний шлях у systemd unit-файлі;
+- PostgreSQL недоступний.
+
+---
+
+### `/api/health` повертає `database: false`
+
+Перевірити:
+
+```bash
+sudo systemctl status postgresql
+psql -h localhost -U diploma_user -d diploma_db
+```
+
+Можливі причини:
+
+- PostgreSQL не запущений;
+- неправильні `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`;
+- користувач БД не має прав;
+- база даних не створена;
+- таблиці не створені або пошкоджені.
+
+---
+
+### Frontend відкривається, але API не працює
+
+Перевірити Nginx:
+
+```bash
+sudo nginx -t
+sudo tail -n 100 /var/log/nginx/error.log
+```
+
+Можливі причини:
+
+- неправильний `proxy_pass`;
+- backend не працює;
+- backend слухає інший порт;
+- запити до `/api/` не проксіюються на backend.
+
+---
+
+### Користувач не має доступу до сторінки модерації
+
+Перевірити роль у PostgreSQL:
+
+```sql
+SELECT id, login, email, role
+FROM users
+ORDER BY id DESC;
+```
+
+Якщо потрібно зробити користувача модератором:
+
+```sql
+UPDATE users
+SET role = 'moderator'
+WHERE login = 'moderator_login';
+```
+
+Після зміни ролі користувач має вийти з акаунта і увійти знову, тому що роль записується в JWT під час логіну.
+
+---
+
+## 16. Відкат після невдалого оновлення
+
+Якщо після оновлення система працює некоректно, потрібно виконати rollback.
+
+Rollback може включати:
+
+- повернення попередньої версії коду;
+- відновлення PostgreSQL з backup;
+- відновлення `.env`;
+- відновлення конфігурації Nginx;
+- відновлення systemd unit-файлу;
+- перезапуск сервісів.
+
+---
+
+## 17. Відкат коду через Git
+
+Перейдіть у каталог проєкту:
+
+```bash
+cd /var/www/diploma
+```
+
+Подивіться останні commit-и:
+
+```bash
+git log --oneline -n 10
+```
+
+Поверніться до попереднього стабільного commit-а:
+
+```bash
+git checkout <stable_commit_hash>
+```
+
+Після цього оновіть залежності та перебудуйте frontend:
 
 ```bash
 cd /var/www/diploma/server
@@ -450,52 +569,126 @@ npm install
 cd /var/www/diploma/my-app
 npm install
 npm run build
+
+sudo systemctl restart diploma-backend
+sudo systemctl reload nginx
 ```
 
-### Крок 6. Повторний запуск backend
+---
+
+## 18. Відновлення PostgreSQL з backup
+
+Перед відновленням бажано зупинити backend:
+
+```bash
+sudo systemctl stop diploma-backend
+```
+
+### Відновлення зі звичайного `.sql`
+
+```bash
+psql -h localhost -U diploma_user -d diploma_db < /var/backups/diploma/db/diploma_db_before_update-<timestamp>.sql
+```
+
+### Відновлення зі стисненого `.sql.gz`
+
+```bash
+gunzip -c /var/backups/diploma/db/diploma_db_before_update-<timestamp>.sql.gz | psql -h localhost -U diploma_user -d diploma_db
+```
+
+Після відновлення:
 
 ```bash
 sudo systemctl start diploma-backend
 sudo systemctl status diploma-backend
+curl http://127.0.0.1:4000/api/health
 ```
-
-### Крок 7. Перевірка після rollback
-
-Після відкату потрібно перевірити:
-
-- відкриття сайту у браузері
-- роботу реєстрації та авторизації
-- стан backend-сервісу
-- відсутність критичних помилок у логах
 
 ---
 
-## 11. Ознаки успішного оновлення
+## 19. Відновлення конфігурацій
+
+### Відновлення `.env`
+
+```bash
+sudo cp /var/backups/diploma/config/server.env_before_update-<timestamp>.bak /var/www/diploma/server/.env
+sudo systemctl restart diploma-backend
+```
+
+### Відновлення Nginx
+
+```bash
+sudo cp /var/backups/diploma/config/diploma.nginx_before_update-<timestamp>.bak /etc/nginx/sites-available/diploma
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### Відновлення systemd unit-файлу
+
+```bash
+sudo cp /var/backups/diploma/config/diploma-backend_before_update-<timestamp>.service.bak /etc/systemd/system/diploma-backend.service
+sudo systemctl daemon-reload
+sudo systemctl restart diploma-backend
+```
+
+---
+
+## 20. Перевірка після rollback
+
+Після rollback потрібно перевірити:
+
+```bash
+sudo systemctl status diploma-backend
+sudo systemctl status nginx
+sudo systemctl status postgresql
+
+curl http://127.0.0.1:4000/api/health
+curl http://your-domain.example/api/health
+```
+
+Також потрібно вручну перевірити:
+
+- відкриття frontend;
+- логін і реєстрацію;
+- створення твору;
+- модерацію;
+- коментарі;
+- обране;
+- прогрес читання;
+- сторінку статистики.
+
+---
+
+## 21. Коротка схема оновлення
+
+1. перевірити стан сервісів;
+2. створити backup PostgreSQL;
+3. створити backup `.env`, Nginx і systemd;
+4. виконати `git pull origin main`;
+5. оновити backend-залежності;
+6. оновити frontend-залежності;
+7. за потреби застосувати SQL migration;
+8. виконати `npm run build` для frontend;
+9. перезапустити backend;
+10. перевірити або перезавантажити Nginx;
+11. перевірити `/api/health`;
+12. пройти smoke-test;
+13. перевірити логи.
+
+---
+
+## 22. Ознаки успішного оновлення
 
 Оновлення вважається успішним, якщо:
 
-- backend-сервіс працює без помилок
-- Nginx працює коректно
-- frontend відображається без збоїв
-- API відповідає коректно
-- користувачі можуть проходити реєстрацію та авторизацію
-- файл `users.json` читається і оновлюється без помилок
-- у логах відсутні критичні помилки
-
----
-
-## 12. Особливості поточної версії проєкту
-
-Поточна процедура оновлення спрощена, оскільки проєкт:
-
-- не використовує окрему СУБД
-- не має автоматичних міграцій
-- зберігає дані у локальному JSON-файлі
-- не використовує Docker або CI/CD для автоматичного deploy
-
-У подальших версіях доцільно розглянути:
-
-- перехід на повноцінну СУБД
-- автоматичні міграції даних
-- автоматизацію deployment pipeline
-- розгортання через Docker Compose або інший orchestration-підхід
+- backend-сервіс має статус `active (running)`;
+- PostgreSQL має статус `active`;
+- Nginx працює без помилок;
+- `/api/health` повертає `database: true`;
+- frontend відкривається у браузері;
+- API-запити проходять через Nginx;
+- користувачі можуть реєструватися і входити;
+- твори створюються і проходять модерацію;
+- коментарі, обране, прогрес читання та жанри зберігаються у PostgreSQL;
+- сторінка статистики отримує актуальні дані;
+- у логах немає критичних помилок.
