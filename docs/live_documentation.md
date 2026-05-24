@@ -100,8 +100,6 @@ my-app/features/search.feature
 GET /api/works
 ```
 
-Локальний `works.json` більше не використовується як fallback.
-
 ---
 
 ## 6. Step definitions
