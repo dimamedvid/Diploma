@@ -171,7 +171,7 @@ export default function AdminStatsPage() {
         <h1 className="admin-stats__title">Статистика</h1>
 
         <p className="admin-stats__subtitle">
-          Дані рахуються з PostgreSQL: користувачі, твори, модерація,
+          Дані: користувачі, твори, модерація,
           коментарі, лайки, обране, прогрес читання та улюблені жанри.
         </p>
       </div>
