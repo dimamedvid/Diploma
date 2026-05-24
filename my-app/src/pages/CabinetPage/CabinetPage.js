@@ -22,6 +22,7 @@ import {
   getFavoriteWorkIdsFromApi,
   getReadingProgressFromApi,
   saveFavoriteGenresToApi,
+  toggleFavoriteWorkInApi,
 } from "../../api/userActivityApi";
 import "./CabinetPage.css";
 
@@ -75,6 +76,7 @@ export default function CabinetPage() {
   const [publishedWorksError, setPublishedWorksError] = useState("");
 
   const [favoriteWorkIds, setFavoriteWorkIds] = useState([]);
+  const [deletingFavoriteWorkId, setDeletingFavoriteWorkId] = useState(null);
   const [favoriteGenres, setFavoriteGenres] = useState([]);
   const [favoriteGenresError, setFavoriteGenresError] = useState("");
   const [isFavoriteGenresSaving, setIsFavoriteGenresSaving] = useState(false);
@@ -100,6 +102,43 @@ export default function CabinetPage() {
 
   const userId = getUserId(user);
   const userFullName = getUserFullName(user);
+
+  /**
+   * Прибирає твір зі списку обраного користувача.
+   *
+   * @param {number|string} workId - ID твору.
+   * @returns {Promise<void>}
+   */
+  const removeFavoriteWork = async (workId) => {
+    if (!token) {
+      setPublishedWorksError("Щоб змінювати обране, потрібно увійти.");
+      return;
+    }
+
+    const isConfirmed = window.confirm("Прибрати цей твір з обраного?");
+
+    if (!isConfirmed) {
+      return;
+    }
+
+    try {
+      setDeletingFavoriteWorkId(workId);
+      setPublishedWorksError("");
+
+      await toggleFavoriteWorkInApi(workId, token);
+
+      setFavoriteWorkIds((ids) =>
+        ids.filter((favoriteId) => String(favoriteId) !== String(workId)),
+      );
+    } catch (error) {
+      setPublishedWorksError(
+        error.message ||
+          "Не вдалося прибрати твір з обраного. Перевірте backend.",
+      );
+    } finally {
+      setDeletingFavoriteWorkId(null);
+    }
+  };
 
   const availableGenres = useMemo(() => {
     return getAvailableGenres(publishedWorks);
@@ -850,9 +889,22 @@ export default function CabinetPage() {
                     {work.description}
                   </p>
 
-                  <Link className="cabinet__link" to={`/works/${work.id}`}>
-                    Перейти до твору
-                  </Link>
+                  <div className="cabinet__work-actions">
+                    <Link className="cabinet__link" to={`/works/${work.id}`}>
+                      Перейти до твору
+                    </Link>
+
+                    <button
+                      className="cabinet__delete"
+                      type="button"
+                      onClick={() => removeFavoriteWork(work.id)}
+                      disabled={String(deletingFavoriteWorkId) === String(work.id)}
+                    >
+                      {String(deletingFavoriteWorkId) === String(work.id)
+                        ? "Видаляємо..."
+                        : "Видалити"}
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
