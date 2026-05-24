@@ -27,6 +27,11 @@ Ukr-Book — це інформаційна вебсистема для ство�
 - улюблені жанри;
 - рекомендоване сортування за улюбленими жанрами;
 - особистий кабінет користувача;
+- видалення творів з обраного через особистий кабінет;
+- публічні профілі користувачів;
+- перегляд опублікованих творів конкретного користувача;
+- перехід на профіль автора твору;
+- перехід на профіль автора коментаря;
 - адміністративна статистика;
 - Swagger / OpenAPI-документація API;
 - JSDoc-документація frontend і backend.
@@ -134,6 +139,7 @@ Ukr-Book — це інформаційна вебсистема для ство�
 - `work.routes.js` — твори, сторінки творів, модерація;
 - `comment.routes.js` — коментарі, оцінки, лайки;
 - `userActivity.routes.js` — обране, прогрес читання, улюблені жанри;
+- `user.routes.js` — публічні профілі користувачів;
 - `adminStats.routes.js` — адміністративна статистика.
 
 ### Utils
@@ -144,6 +150,7 @@ Ukr-Book — це інформаційна вебсистема для ство�
 - `commentDb.js` — робота з `comments` і `comment_likes`;
 - `userActivityDb.js` — робота з `favorite_works`, `reading_progress`, `favorite_genres`;
 - `adminStatsDb.js` — SQL-запити для сторінки статистики;
+- `userProfileDb.js` — отримання публічного профілю користувача та його опублікованих творів;
 - `AppError.js` — контрольовані API-помилки;
 - `logger.js` — логування.
 
@@ -351,6 +358,12 @@ DELETE /api/me/reading-progress/:workId
 
 GET /api/me/favorite-genres
 PUT /api/me/favorite-genres
+```
+
+### Users
+
+```text
+GET /api/users/:id/profile
 ```
 
 ### Admin
