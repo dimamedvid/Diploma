@@ -392,3 +392,43 @@
     justify-content: flex-start;
   }
 }
+
+@media (max-width: 640px) {
+  .work-details__reader-controls,
+  .work-details__page-controls,
+  .work-details__controls,
+  .work-details__navigation {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .work-details__reader-controls button,
+  .work-details__page-controls button,
+  .work-details__controls button,
+  .work-details__navigation button,
+  .work-details__button {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 640px) {
+  .reader__controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .reader__controls button,
+  .reader__button {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+}

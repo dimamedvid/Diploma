@@ -49,3 +49,34 @@
 .access-denied__link:hover {
   opacity: 0.92;
 }
+
+@media (max-width: 768px) {
+  .layout__content {
+    min-width: 0;
+  }
+
+  .access-denied {
+    margin: 32px auto;
+    padding: 24px 18px;
+  }
+
+  .access-denied__title {
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 480px) {
+  .access-denied {
+    margin: 24px auto;
+    padding: 20px 14px;
+  }
+
+  .access-denied__title {
+    font-size: 22px;
+  }
+
+  .access-denied__link {
+    width: 100%;
+    text-align: center;
+  }
+}

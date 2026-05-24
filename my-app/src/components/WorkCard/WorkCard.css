@@ -97,3 +97,44 @@
   font-size: 13px;
   color: #888;
 }
+
+@media (max-width: 900px) {
+  .work-card__cover-wrapper {
+    height: 360px;
+  }
+}
+
+@media (max-width: 620px) {
+  .work-card {
+    max-width: 420px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .work-card__cover-wrapper {
+    height: 420px;
+  }
+
+  .work-card__body {
+    padding: 18px 14px;
+  }
+
+  .work-card__title {
+    font-size: 18px;
+  }
+
+  .work-card__author,
+  .work-card__button {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 420px) {
+  .work-card__cover-wrapper {
+    height: 360px;
+  }
+
+  .work-card__description {
+    min-height: auto;
+  }
+}

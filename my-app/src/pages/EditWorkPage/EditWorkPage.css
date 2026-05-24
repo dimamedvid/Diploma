@@ -288,3 +288,462 @@
     height: 190px;
   }
 }
+
+.create-work,
+.create-work * {
+  box-sizing: border-box;
+}
+
+.create-work {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.create-work__card {
+  width: 100%;
+  max-width: 960px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.create-work__form,
+.create-work__field,
+.create-work__preview,
+.create-work__stats,
+.create-work__stat {
+  min-width: 0;
+}
+
+.create-work__input,
+.create-work__textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.create-work__textarea {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.create-work__textarea--content {
+  min-height: 320px;
+  max-height: 520px;
+  white-space: pre-wrap;
+}
+
+.create-work__preview {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.create-work__preview,
+.create-work__preview * {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.create-work__preview p,
+.create-work__preview div,
+.create-work__preview span,
+.create-work__preview strong,
+.create-work__preview h2,
+.create-work__preview h3 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.create-work__stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 768px) {
+  .create-work {
+    padding: 28px 0;
+  }
+
+  .create-work__card {
+    padding: 22px 18px;
+    border-radius: 14px;
+  }
+
+  .create-work__title {
+    font-size: 26px;
+  }
+
+  .create-work__subtitle {
+    font-size: 14px;
+  }
+
+  .create-work__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .create-work__preview {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .create-work {
+    padding: 20px 0;
+  }
+
+  .create-work__card {
+    padding: 18px 14px;
+  }
+
+  .create-work__title {
+    font-size: 23px;
+  }
+
+  .create-work__input,
+  .create-work__textarea {
+    font-size: 15px;
+  }
+
+  .create-work__textarea {
+    max-height: 420px;
+  }
+
+  .create-work__textarea--content {
+    min-height: 260px;
+    max-height: 420px;
+  }
+
+  .create-work__preview {
+    padding: 16px 14px;
+  }
+}
+
+.create-work__preview {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.create-work__preview-header {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.create-work__preview-card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.create-work__preview-reader {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.create-work__preview-reader p,
+.create-work__preview-reader div,
+.create-work__preview-reader span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.create-work__preview-actions {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  gap: 10px;
+}
+
+.create-work__preview-actions button,
+.create-work__preview-button {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1;
+  white-space: normal;
+}
+
+.create-work__actions {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.create-work__actions button,
+.create-work__submit,
+.create-work__reset,
+.create-work__cancel {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  .create-work__preview {
+    padding: 16px;
+  }
+
+  .create-work__preview-card {
+    padding: 16px;
+  }
+
+  .create-work__preview-reader {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .create-work__preview-actions {
+    flex-direction: column;
+  }
+
+  .create-work__preview-actions button,
+  .create-work__preview-button {
+    width: 100%;
+  }
+
+  .create-work__actions {
+    flex-direction: column;
+  }
+
+  .create-work__actions button,
+  .create-work__submit,
+  .create-work__reset,
+  .create-work__cancel {
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .create-work__preview {
+    padding: 12px;
+  }
+
+  .create-work__preview-card {
+    padding: 12px;
+  }
+
+  .create-work__preview-reader {
+    padding: 12px;
+  }
+}
+
+.edit-work,
+.edit-work * {
+  box-sizing: border-box;
+}
+
+.edit-work {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.edit-work__card,
+.edit-work__form,
+.edit-work__field,
+.edit-work__stats,
+.edit-work__stat,
+.edit-work__actions {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.edit-work__card {
+  overflow: hidden;
+}
+
+.edit-work__input,
+.edit-work__textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.edit-work__textarea {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.edit-work__textarea--content {
+  min-height: 320px;
+  max-height: 520px;
+  white-space: pre-wrap;
+}
+
+.edit-work__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.edit-work__stat {
+  overflow: hidden;
+}
+
+.edit-work__stat span,
+.edit-work__stat strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.edit-work__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.edit-work__actions button,
+.edit-work__submit,
+.edit-work__reset,
+.edit-work__cancel {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+
+@media (max-width: 768px) {
+  .edit-work {
+    padding: 28px 0;
+  }
+
+  .edit-work__card {
+    padding: 22px 18px;
+    border-radius: 14px;
+  }
+
+  .edit-work__title {
+    font-size: 26px;
+  }
+
+  .edit-work__subtitle {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .edit-work__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-work__actions {
+    flex-direction: column;
+  }
+
+  .edit-work__actions button,
+  .edit-work__submit,
+  .edit-work__reset,
+  .edit-work__cancel {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .edit-work {
+    padding: 20px 0;
+  }
+
+  .edit-work__card {
+    padding: 18px 14px;
+  }
+
+  .edit-work__title {
+    font-size: 23px;
+  }
+
+  .edit-work__input,
+  .edit-work__textarea {
+    font-size: 15px;
+  }
+
+  .edit-work__textarea {
+    max-height: 420px;
+  }
+
+  .edit-work__textarea--content {
+    min-height: 260px;
+    max-height: 420px;
+  }
+}
+
+.edit-work__preview,
+.edit-work__preview-card,
+.edit-work__preview-reader,
+.edit-work__preview-page,
+.edit-work__preview-actions {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.edit-work__preview,
+.edit-work__preview-card,
+.edit-work__preview-reader {
+  overflow: hidden;
+}
+
+.edit-work__preview-page,
+.edit-work__preview-page p,
+.edit-work__preview-page div,
+.edit-work__preview-page span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.edit-work__preview-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.edit-work__preview-actions button {
+  min-width: 0;
+  flex: 1;
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  .edit-work__preview-actions {
+    flex-direction: column;
+  }
+
+  .edit-work__preview-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .edit-work__preview-actions,
+  .edit-work__reader-controls,
+  .edit-work__preview-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .edit-work__preview-actions button,
+  .edit-work__reader-controls button,
+  .edit-work__preview-controls button,
+  .edit-work__preview-button {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+}

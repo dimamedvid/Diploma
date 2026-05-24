@@ -247,3 +247,155 @@
     flex-direction: column;
   }
 }
+
+.admin,
+.admin * {
+  box-sizing: border-box;
+}
+
+.admin {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.admin__card,
+.admin__list,
+.admin__work,
+.admin__content,
+.admin__work-header,
+.admin__reader,
+.admin__reader-top,
+.admin__reader-page,
+.admin__reader-controls,
+.admin__actions {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.admin__card,
+.admin__work {
+  overflow: hidden;
+}
+
+.admin__content,
+.admin__description,
+.admin__meta,
+.admin__reader,
+.admin__reader-page,
+.admin__reader-page p,
+.admin__reader-page div,
+.admin__reader-page span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin__reader-page {
+  white-space: pre-wrap;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.admin__reader-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.admin__reader-controls button {
+  min-width: 0;
+  flex: 1;
+  white-space: normal;
+}
+
+.admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin__actions button {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+
+@media (max-width: 768px) {
+  .admin {
+    padding: 28px 0;
+  }
+
+  .admin__card {
+    padding: 22px 18px;
+    border-radius: 14px;
+  }
+
+  .admin__list {
+    gap: 18px;
+  }
+
+  .admin__work {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .admin__work-header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin__reader {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .admin__reader-controls {
+    flex-direction: column;
+  }
+
+  .admin__reader-controls button {
+    width: 100%;
+  }
+
+  .admin__actions {
+    flex-direction: column;
+  }
+
+  .admin__actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin {
+    padding: 20px 0;
+  }
+
+  .admin__card {
+    padding: 18px 14px;
+  }
+
+  .admin__work {
+    padding: 14px;
+  }
+
+  .admin__title {
+    font-size: 24px;
+  }
+
+  .admin__subtitle,
+  .admin__description,
+  .admin__meta {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .admin__reader {
+    padding: 12px;
+  }
+
+  .admin__reader-page {
+    max-height: 420px;
+  }
+}

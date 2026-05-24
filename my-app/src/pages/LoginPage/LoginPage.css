@@ -82,3 +82,92 @@
 .login-page__subtitle {
   color:#a5a1a1;
 }
+
+.auth {
+  width: 100%;
+  min-width: 0;
+  padding: 48px 16px;
+}
+
+.auth__card,
+.login-page__card {
+  width: min(100%, 520px);
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+
+.auth__form,
+.login-page__form {
+  width: 100%;
+  min-width: 0;
+}
+
+.auth__field,
+.login-page__field {
+  width: 100%;
+  min-width: 0;
+}
+
+.auth__input,
+.login-page__input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.auth__button,
+.login-page__button {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .auth {
+    padding: 32px 12px;
+  }
+
+  .auth__card,
+  .login-page__card {
+    padding: 28px 22px;
+    border-radius: 16px;
+  }
+
+  .auth__title,
+  .login-page__title {
+    font-size: 26px;
+  }
+
+  .auth__subtitle,
+  .login-page__subtitle {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 380px) {
+  .auth {
+    padding: 24px 8px;
+  }
+
+  .auth__card,
+  .login-page__card {
+    padding: 24px 16px;
+    border-radius: 14px;
+  }
+
+  .auth__title,
+  .login-page__title {
+    font-size: 24px;
+  }
+
+  .auth__subtitle,
+  .login-page__subtitle {
+    font-size: 14px;
+  }
+
+  .auth__footer,
+  .login-page__footer {
+    font-size: 14px;
+  }
+}

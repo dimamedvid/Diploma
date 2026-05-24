@@ -83,3 +83,103 @@
 .register-page__subtitle {
   color:#a5a1a1;
 }
+
+.auth {
+  width: 100%;
+  min-width: 0;
+  padding: 48px 16px;
+}
+
+.auth__card,
+.register-page__card {
+  width: min(100%, 560px);
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+
+.auth__form,
+.register-page__form {
+  width: 100%;
+  min-width: 0;
+}
+
+.auth__row,
+.register-page__row {
+  width: 100%;
+  min-width: 0;
+}
+
+.auth__field,
+.register-page__field {
+  width: 100%;
+  min-width: 0;
+}
+
+.auth__input,
+.register-page__input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.auth__button,
+.register-page__button {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .auth {
+    padding: 32px 12px;
+  }
+
+  .auth__card,
+  .register-page__card {
+    padding: 28px 22px;
+    border-radius: 16px;
+  }
+
+  .auth__row,
+  .register-page__row {
+    grid-template-columns: 1fr;
+  }
+
+  .auth__title,
+  .register-page__title {
+    font-size: 26px;
+  }
+
+  .auth__subtitle,
+  .register-page__subtitle {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 380px) {
+  .auth {
+    padding: 24px 8px;
+  }
+
+  .auth__card,
+  .register-page__card {
+    padding: 24px 16px;
+    border-radius: 14px;
+  }
+
+  .auth__title,
+  .register-page__title {
+    font-size: 24px;
+  }
+
+  .auth__subtitle,
+  .register-page__subtitle {
+    font-size: 14px;
+  }
+
+  .auth__footer,
+  .register-page__footer {
+    font-size: 14px;
+  }
+}
