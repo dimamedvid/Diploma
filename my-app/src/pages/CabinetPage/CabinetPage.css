@@ -478,3 +478,175 @@
     justify-content: flex-start;
   }
 }
+
+.cabinet,
+.cabinet * {
+  box-sizing: border-box;
+}
+
+.cabinet {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.cabinet__card,
+.cabinet__header,
+.cabinet__section,
+.cabinet__content,
+.cabinet__grid,
+.cabinet__list,
+.cabinet__works,
+.cabinet__comments,
+.cabinet__favorites,
+.cabinet__progress,
+.cabinet__genres,
+.cabinet__tabs,
+.cabinet__actions {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.cabinet__card,
+.cabinet__section,
+.cabinet__work,
+.cabinet__comment,
+.cabinet__favorite,
+.cabinet__progress-item,
+.cabinet__genre-card {
+  overflow: hidden;
+}
+
+.cabinet__title,
+.cabinet__subtitle,
+.cabinet__text,
+.cabinet__description,
+.cabinet__meta,
+.cabinet__work-title,
+.cabinet__comment-text,
+.cabinet__progress-title,
+.cabinet__favorite-title,
+.cabinet__genre-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.cabinet__grid,
+.cabinet__works,
+.cabinet__comments,
+.cabinet__favorites,
+.cabinet__progress,
+.cabinet__genres {
+  display: grid;
+  gap: 16px;
+}
+
+.cabinet__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cabinet__tabs button,
+.cabinet__tab,
+.cabinet__button,
+.cabinet__actions button {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.cabinet__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .cabinet {
+    padding: 32px 0;
+  }
+
+  .cabinet__card,
+  .cabinet__section {
+    padding: 22px 18px;
+    border-radius: 14px;
+  }
+
+  .cabinet__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .cabinet {
+    padding: 24px 0;
+  }
+
+  .cabinet__card,
+  .cabinet__section {
+    padding: 18px 14px;
+  }
+
+  .cabinet__title {
+    font-size: 24px;
+    line-height: 1.25;
+  }
+
+  .cabinet__subtitle,
+  .cabinet__text,
+  .cabinet__description,
+  .cabinet__meta {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .cabinet__tabs {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .cabinet__tabs button,
+  .cabinet__tab {
+    width: 100%;
+  }
+
+  .cabinet__actions {
+    flex-direction: column;
+  }
+
+  .cabinet__add-link {
+    text-align: center;
+  }
+
+  .cabinet__button,
+  .cabinet__actions button {
+    width: 100%;
+  }
+
+  .cabinet__work,
+  .cabinet__comment,
+  .cabinet__favorite,
+  .cabinet__progress-item,
+  .cabinet__genre-card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .cabinet {
+    padding: 20px 0;
+  }
+
+  .cabinet__card,
+  .cabinet__section {
+    padding: 16px 12px;
+  }
+
+  .cabinet__title {
+    font-size: 22px;
+  }
+}

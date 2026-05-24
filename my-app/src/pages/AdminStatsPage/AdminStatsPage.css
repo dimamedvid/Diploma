@@ -150,3 +150,141 @@
     grid-template-columns: 1fr;
   }
 }
+
+.admin-stats,
+.admin-stats * {
+  box-sizing: border-box;
+}
+
+.admin-stats {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.admin-stats__card,
+.admin-stats__section,
+.admin-stats__grid,
+.admin-stats__columns,
+.admin-stats__list,
+.admin-stats__table,
+.admin-stats__metric,
+.admin-stats__row,
+.admin-stats__table-row {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.admin-stats__card,
+.admin-stats__section,
+.admin-stats__metric,
+.admin-stats__row,
+.admin-stats__table-row {
+  overflow: hidden;
+}
+
+.admin-stats__title,
+.admin-stats__subtitle,
+.admin-stats__section-title,
+.admin-stats__metric span,
+.admin-stats__metric strong,
+.admin-stats__row span,
+.admin-stats__row strong,
+.admin-stats__table-row span,
+.admin-stats__table-row strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-stats__table-row div {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-stats {
+    padding: 32px 0;
+    gap: 20px;
+  }
+
+  .admin-stats__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-stats__columns {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-stats__table-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-stats {
+    padding: 24px 0;
+    gap: 16px;
+  }
+
+  .admin-stats__card,
+  .admin-stats__section {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
+  .admin-stats__grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .admin-stats__metric {
+    padding: 14px;
+  }
+
+  .admin-stats__metric strong {
+    font-size: 26px;
+  }
+
+  .admin-stats__title {
+    font-size: 24px;
+    line-height: 1.25;
+  }
+
+  .admin-stats__subtitle {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .admin-stats__section-title {
+    font-size: 20px;
+    line-height: 1.3;
+  }
+
+  .admin-stats__row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .admin-stats__table-row {
+    padding: 12px;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .admin-stats {
+    padding: 20px 0;
+  }
+
+  .admin-stats__card,
+  .admin-stats__section {
+    padding: 16px 12px;
+  }
+
+  .admin-stats__metric strong {
+    font-size: 24px;
+  }
+}
