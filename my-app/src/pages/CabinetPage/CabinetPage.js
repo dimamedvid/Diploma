@@ -4,7 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { logout } from "../../store/authSlice";
 import {
   getUserFullName,
-  getUserId,
 } from "../../utils/worksStorage";
 import {
   MAX_FAVORITE_GENRES,
@@ -100,7 +99,6 @@ export default function CabinetPage() {
   const [editingCommentText, setEditingCommentText] = useState("");
   const [editingCommentRating, setEditingCommentRating] = useState("5");
 
-  const userId = getUserId(user);
   const userFullName = getUserFullName(user);
 
   /**
@@ -633,8 +631,9 @@ export default function CabinetPage() {
       </section>
 
       <section className="cabinet__section">
-        <h2 className="cabinet__section-title">Продовжити читання</h2>
-
+        <div className="cabinet__section-header">
+          <h2 className="cabinet__section-title">Продовжити читання</h2>
+        </div>
         {isReadingProgressLoading && (
           <p className="cabinet__empty">Завантажуємо прогрес читання...</p>
         )}
@@ -864,7 +863,10 @@ export default function CabinetPage() {
       </section>
 
       <section className="cabinet__section">
-        <h2 className="cabinet__section-title">Обрані твори</h2>
+        <div className="cabinet__section-header">
+          <h2 className="cabinet__section-title">Обрані твори</h2>
+        </div>
+        
 
         {publishedWorksError && (
           <p className="cabinet__empty">{publishedWorksError}</p>
@@ -913,7 +915,10 @@ export default function CabinetPage() {
       </section>
 
       <section className="cabinet__section">
-        <h2 className="cabinet__section-title">Мої коментарі та оцінки</h2>
+        <div className="cabinet__section-header">
+          <h2 className="cabinet__section-title">Мої коментарі та оцінки</h2>
+        </div>
+
 
         {isUserCommentsLoading && (
           <p className="cabinet__empty">Завантажуємо ваші коментарі...</p>

@@ -14,6 +14,7 @@ import Footer from "./components/Footer/Footer";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import AdminRoute from "./auth/AdminRoute";
 import NotFoundPage from "./pages/NotFoundPage/NotFoundPage";
+import UserProfilePage from "./pages/UserProfilePage/UserProfilePage";
 import "./App.css";
 
 /**
@@ -74,6 +75,7 @@ export default function App() {
 
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/users/:id" element={<UserProfilePage />} />
 
             <Route
               path="/cabinet"

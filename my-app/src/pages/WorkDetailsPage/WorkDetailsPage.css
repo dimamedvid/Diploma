@@ -432,3 +432,17 @@
     white-space: normal;
   }
 }
+
+.work-details__author-link,
+.comments__author-link {
+  color: #ffffff;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+  transition: opacity 0.2s, border-color 0.2s;
+}
+
+.work-details__author-link:hover,
+.comments__author-link:hover {
+  opacity: 0.85;
+  border-color: #ffffff;
+}

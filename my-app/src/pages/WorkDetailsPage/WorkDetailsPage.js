@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { getWorkById } from "../../api/worksApi";
 import {
@@ -555,7 +555,16 @@ export default function WorkDetailsPage() {
 
         <div className="work-details__info">
           <h1 className="work-details__title">{work.title}</h1>
-          <p className="work-details__author">{work.author}</p>
+          <p className="work-details__author">
+            Автор:{" "}
+            {work.authorId ? (
+              <Link className="work-details__author-link" to={`/users/${work.authorId}`}>
+                {work.author}
+              </Link>
+            ) : (
+              work.author
+            )}
+          </p>
 
           <div className="work-details__meta">
             <span>{work.genre}</span>
@@ -704,7 +713,15 @@ export default function WorkDetailsPage() {
               return (
                 <article className="comments__item" key={comment.id}>
                   <div className="comments__item-header">
-                    <strong>{comment.author}</strong>
+                    <strong>
+                      {comment.userId ? (
+                        <Link className="comments__author-link" to={`/users/${comment.userId}`}>
+                          {comment.author}
+                        </Link>
+                      ) : (
+                        comment.author
+                      )}
+                    </strong>
 
                     <span className="comments__item-rating">
                       Оцінка: {comment.rating}/5
