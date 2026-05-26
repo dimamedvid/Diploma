@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { createWork } from "../../api/worksApi";
+import { renderFormattedParagraphs } from "../../utils/richText";
 import { getUserFullName } from "../../utils/worksStorage";
 import {
   MIN_CONTENT_LENGTH,
@@ -13,19 +14,6 @@ import "./CreateWorkPage.css";
 
 const DEFAULT_COVER =
   "https://upload.wikimedia.org/wikipedia/commons/6/65/No-Image-Placeholder.svg";
-
-/**
- * Розбиває текст сторінки на абзаци для попереднього перегляду.
- *
- * @param {string} text - Текст сторінки.
- * @returns {JSX.Element[]} Масив абзаців.
- */
-function renderParagraphs(text) {
-  return text
-    .split("\n\n")
-    .filter(Boolean)
-    .map((paragraph, index) => <p key={index}>{paragraph}</p>);
-}
 
 /**
  * Сторінка створення нового твору користувачем.
@@ -47,6 +35,47 @@ export default function CreateWorkPage() {
   const [error, setError] = useState("");
   const [previewPage, setPreviewPage] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const contentTextareaRef = useRef(null);
+  const previewReaderRef = useRef(null);
+
+  const scrollToPreviewReader = () => {
+    setTimeout(() => {
+      previewReaderRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  };
+
+  const applyContentFormat = (marker) => {
+    const textarea = contentTextareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.slice(start, end);
+    const textToFormat = selectedText || "текст";
+    const formattedText = `${marker}${textToFormat}${marker}`;
+
+    const nextContent =
+      content.slice(0, start) + formattedText + content.slice(end);
+
+    setContent(nextContent);
+    setPreviewPage(0);
+
+    setTimeout(() => {
+      textarea.focus();
+
+      const selectionStart = start + marker.length;
+      const selectionEnd = selectionStart + textToFormat.length;
+
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    }, 0);
+  };
 
   const pages = useMemo(() => {
     return splitTextIntoPages(content);
@@ -86,6 +115,7 @@ export default function CreateWorkPage() {
    */
   const goToPreviousPreviewPage = () => {
     setPreviewPage((page) => Math.max(page - 1, 0));
+    scrollToPreviewReader();
   };
 
   /**
@@ -95,6 +125,7 @@ export default function CreateWorkPage() {
    */
   const goToNextPreviewPage = () => {
     setPreviewPage((page) => Math.min(page + 1, pages.length - 1));
+    scrollToPreviewReader();
   };
 
   /**
@@ -240,7 +271,28 @@ export default function CreateWorkPage() {
               рядку між сторінками.
             </span>
 
+            <div className="create-work__format-toolbar">
+              <button
+                className="create-work__format-button"
+                type="button"
+                onClick={() => applyContentFormat("**")}
+                disabled={isSubmitting}
+              >
+                <strong>Жирний</strong>
+              </button>
+
+              <button
+                className="create-work__format-button"
+                type="button"
+                onClick={() => applyContentFormat("*")}
+                disabled={isSubmitting}
+              >
+                <em>Курсив</em>
+              </button>
+            </div>
+
             <textarea
+              ref={contentTextareaRef}
               className="create-work__textarea create-work__textarea--content"
               value={content}
               onChange={(event) => {
@@ -308,7 +360,7 @@ export default function CreateWorkPage() {
               </div>
             </div>
 
-            <div className="create-work__preview-reader">
+            <div className="create-work__preview-reader" ref={previewReaderRef}>
               <div className="create-work__preview-reader-header">
                 <h3>Перегляд сторінки</h3>
 
@@ -320,7 +372,7 @@ export default function CreateWorkPage() {
               </div>
 
               <div className="create-work__preview-page">
-                {renderParagraphs(previewPageText)}
+                {renderFormattedParagraphs(previewPageText)}
               </div>
 
               {pages.length > 1 && (

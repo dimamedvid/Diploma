@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { renderFormattedParagraphs } from "../../utils/richText";
 import { getWorkById, updateWork } from "../../api/worksApi";
 import {
   MIN_CONTENT_LENGTH,
@@ -10,19 +11,6 @@ import {
   splitTextIntoPages,
 } from "../../utils/textPagination";
 import "./EditWorkPage.css";
-
-/**
- * Розбиває текст сторінки на абзаци.
- *
- * @param {string} text - Текст сторінки.
- * @returns {JSX.Element[]} Масив абзаців.
- */
-function renderParagraphs(text) {
-  return text
-    .split("\n\n")
-    .filter(Boolean)
-    .map((paragraph, index) => <p key={index}>{paragraph}</p>);
-}
 
 /**
  * Сторінка редагування власного твору.
@@ -49,6 +37,47 @@ export default function EditWorkPage() {
 
   const [error, setError] = useState("");
   const [previewPage, setPreviewPage] = useState(0);
+
+  const contentTextareaRef = useRef(null);
+  const previewReaderRef = useRef(null);
+
+  const scrollToPreviewReader = () => {
+    setTimeout(() => {
+      previewReaderRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  };
+
+  const applyContentFormat = (marker) => {
+    const textarea = contentTextareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.slice(start, end);
+    const textToFormat = selectedText || "текст";
+    const formattedText = `${marker}${textToFormat}${marker}`;
+
+    const nextContent =
+      content.slice(0, start) + formattedText + content.slice(end);
+
+    setContent(nextContent);
+    setPreviewPage(0);
+
+    setTimeout(() => {
+      textarea.focus();
+
+      const selectionStart = start + marker.length;
+      const selectionEnd = selectionStart + textToFormat.length;
+
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    }, 0);
+  };
 
   const pages = useMemo(() => {
     return splitTextIntoPages(content);
@@ -116,6 +145,7 @@ export default function EditWorkPage() {
    */
   const goToPreviousPreviewPage = () => {
     setPreviewPage((page) => Math.max(page - 1, 0));
+    scrollToPreviewReader();
   };
 
   /**
@@ -125,6 +155,7 @@ export default function EditWorkPage() {
    */
   const goToNextPreviewPage = () => {
     setPreviewPage((page) => Math.min(page + 1, pages.length - 1));
+    scrollToPreviewReader();
   };
 
   /**
@@ -289,7 +320,28 @@ export default function EditWorkPage() {
               додати нові сторінки.
             </span>
 
+            <div className="edit-work__format-toolbar">
+              <button
+                className="edit-work__format-button"
+                type="button"
+                onClick={() => applyContentFormat("**")}
+                disabled={isSubmitting}
+              >
+                <strong>Жирний</strong>
+              </button>
+
+              <button
+                className="edit-work__format-button"
+                type="button"
+                onClick={() => applyContentFormat("*")}
+                disabled={isSubmitting}
+              >
+                <em>Курсив</em>
+              </button>
+            </div>
+
             <textarea
+              ref={contentTextareaRef}
               className="edit-work__textarea edit-work__textarea--content"
               value={content}
               onChange={(event) => {
@@ -351,7 +403,7 @@ export default function EditWorkPage() {
               </div>
             </div>
 
-            <div className="edit-work__preview-reader">
+            <div className="edit-work__preview-reader" ref={previewReaderRef}>
               <div className="edit-work__preview-reader-header">
                 <h3>Перегляд сторінки</h3>
 
@@ -363,7 +415,7 @@ export default function EditWorkPage() {
               </div>
 
               <div className="edit-work__preview-page">
-                {renderParagraphs(previewPageText)}
+                {renderFormattedParagraphs(previewPageText)}
               </div>
 
               {pages.length > 1 && (

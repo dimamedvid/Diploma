@@ -1,24 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import {
   approveWork,
   getPendingWorksForModeration,
   rejectWork,
 } from "../../api/worksApi";
+import { renderFormattedParagraphs } from "../../utils/richText";
 import "./AdminPage.css";
-
-/**
- * Розбиває текст сторінки на абзаци.
- *
- * @param {string} text - Текст сторінки.
- * @returns {JSX.Element[]} Масив абзаців.
- */
-function renderParagraphs(text) {
-  return text
-    .split("\n\n")
-    .filter(Boolean)
-    .map((paragraph, index) => <p key={index}>{paragraph}</p>);
-}
 
 /**
  * Перевіряє, чи користувач має доступ до модерації.
@@ -49,6 +37,17 @@ export default function AdminPage() {
   const [pageError, setPageError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [processingWorkId, setProcessingWorkId] = useState(null);
+
+  const readerRefs = useRef({});
+
+  const scrollToReader = (workId) => {
+    setTimeout(() => {
+      readerRefs.current[String(workId)]?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  };
 
   const pendingCount = useMemo(() => pendingWorks.length, [pendingWorks]);
   const hasAccess = Boolean(token) && canModerate(user);
@@ -137,6 +136,7 @@ export default function AdminPage() {
     const previousPage = Math.max(currentPage - 1, 0);
 
     setCurrentPageForWork(work.id, previousPage);
+    scrollToReader(work.id);
   };
 
   /**
@@ -151,6 +151,7 @@ export default function AdminPage() {
     const nextPage = Math.min(currentPage + 1, pagesCount - 1);
 
     setCurrentPageForWork(work.id, nextPage);
+    scrollToReader(work.id);
   };
 
   /**
@@ -314,7 +315,14 @@ export default function AdminPage() {
                   <p className="admin__meta">Жанр: {work.genre}</p>
                   <p className="admin__description">{work.description}</p>
 
-                  <div className="admin__reader">
+                  <div
+                    className="admin__reader"
+                    ref={(element) => {
+                      if (element) {
+                        readerRefs.current[String(work.id)] = element;
+                      }
+                    }}
+                  >
                     <div className="admin__reader-top">
                       <strong>Перегляд тексту</strong>
 
@@ -324,7 +332,7 @@ export default function AdminPage() {
                     </div>
 
                     <div className="admin__reader-page">
-                      {renderParagraphs(pageText)}
+                      {renderFormattedParagraphs(pageText)}
                     </div>
 
                     {pages.length > 1 && (

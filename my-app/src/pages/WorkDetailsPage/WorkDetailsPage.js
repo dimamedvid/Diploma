@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { renderFormattedParagraphs } from "../../utils/richText";
 import { getWorkById } from "../../api/worksApi";
 import {
   createWorkComment,
@@ -16,19 +17,6 @@ import {
   toggleFavoriteWorkInApi,
 } from "../../api/userActivityApi";
 import "./WorkDetailsPage.css";
-
-/**
- * Розбиває текст сторінки на абзаци.
- *
- * @param {string} text - Текст сторінки твору.
- * @returns {JSX.Element[]} Масив абзаців.
- */
-function renderParagraphs(text) {
-  return text
-    .split("\n\n")
-    .filter(Boolean)
-    .map((paragraph, index) => <p key={index}>{paragraph}</p>);
-}
 
 /**
  * Повертає стабільний ID користувача.
@@ -110,6 +98,17 @@ export default function WorkDetailsPage() {
   const [editingText, setEditingText] = useState("");
   const [editingRating, setEditingRating] = useState("5");
   const [processingCommentId, setProcessingCommentId] = useState(null);
+
+  const readerRef = useRef(null);
+
+  const scrollToReader = () => {
+    setTimeout(() => {
+      readerRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  };
 
   const isAuthorized = Boolean(user && token);
   const currentUserId = getCurrentUserId(user);
@@ -351,10 +350,12 @@ export default function WorkDetailsPage() {
 
   const goToPreviousPage = () => {
     setCurrentPage((page) => Math.max(page - 1, 0));
+    scrollToReader();
   };
 
   const goToNextPage = () => {
     setCurrentPage((page) => Math.min(page + 1, pages.length - 1));
+    scrollToReader();
   };
 
   const handleCommentSubmit = async (event) => {
@@ -600,7 +601,7 @@ export default function WorkDetailsPage() {
         </div>
       </div>
 
-      <div className="reader">
+      <div className="reader" ref={readerRef}>
         <div className="reader__top">
           <h2 className="reader__title">Читати твір</h2>
 
@@ -611,7 +612,7 @@ export default function WorkDetailsPage() {
           )}
         </div>
 
-        <div className="reader__page">{renderParagraphs(pageText)}</div>
+        <div className="reader__page">{renderFormattedParagraphs(pageText)}</div>
 
         {pages.length > 1 && (
           <div className="reader__controls">
